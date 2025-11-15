@@ -23,7 +23,7 @@ function App() {
         });
         const data = await response.json();
         if (data.authenticated) {
-          setUser({ username: data.user });
+          setUser({ username: data.user, email: data.email});
         }
       } catch (error) {
         console.error('Auth check failed:', error);
