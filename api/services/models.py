@@ -14,6 +14,7 @@ Base = declarative_base()
 
 # ---------------- USERS ---------------- #
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -33,6 +34,7 @@ class User(Base):
 
 
 # ---------------- BOOKS ---------------- #
+
 
 class Book(Base):
     __tablename__ = "books"
@@ -60,6 +62,7 @@ class Sentence(Base):
 
 # ---------------- PHRASES ---------------- #
 
+
 class Phrase(Base):
     __tablename__ = "phrases"
 
@@ -74,7 +77,9 @@ class Phrase(Base):
 
     user = relationship("User", back_populates="phrases", lazy="selectin")
 
+
 # ---------------- SYLLABLES ---------------- #
+
 
 class Syllable(Base):
     __tablename__ = "syllables"
@@ -93,6 +98,7 @@ class Syllable(Base):
 
 
 # ---------------- HOMEPAGE STRUCTURE ---------------- #
+
 
 class HpPage(Base):
     __tablename__ = "hp_pages"
@@ -161,6 +167,7 @@ class HpRowTile(Base):
 
 # ---------------- MESSAGES ---------------- #
 
+
 class Message(Base):
     __tablename__ = "messages"
 
@@ -175,6 +182,7 @@ class Message(Base):
 
 # ---------------- READING JOURNAL ---------------- #
 
+
 class ReadingJournal(Base):
     __tablename__ = "reading_journal"
 
@@ -186,6 +194,7 @@ class ReadingJournal(Base):
 
 
 # ---------------- TRANSITIONS ---------------- #
+
 
 class HpTransition(Base):
     __tablename__ = "hp_transitions"
