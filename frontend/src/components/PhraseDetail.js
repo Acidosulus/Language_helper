@@ -9,7 +9,7 @@ function PhraseDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { user } = useAuth();
-  const apiUrl = 'http://localhost:8000/api';
+  const apiUrl = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const fetchPhrase = async () => {
@@ -59,7 +59,7 @@ function PhraseDetail() {
       </div>
       <div className="phrase-card">
         <div className="phrase-original">
-          <h3>Original <Text></Text></h3>
+          <h3>Original</h3>
           <p>{phrase.phrase}</p>
         </div>
         <div className="phrase-translation">

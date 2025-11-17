@@ -9,7 +9,7 @@ function LearnPhrases() {
   const [error, setError] = useState('');
   const { user } = useAuth();
   const navigate = useNavigate();
-  const apiUrl = 'http://localhost:8000/api';
+  const apiUrl = process.env.REACT_APP_API_URL;
 
   const fetchNextPhrase = async (currentId = 0) => {
     try {

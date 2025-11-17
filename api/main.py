@@ -15,16 +15,21 @@ from services import phrases
 app = FastAPI()
 # Секретный ключ в проде должен быть из env. Здесь для локалки.
 app.add_middleware(
-    SessionMiddleware, secret_key="super-secret-key", https_only=False
+    SessionMiddleware,
+    secret_key="super-secret-key",
+    session_cookie="session_cookie",
+    https_only=False,
 )
 
-# CORS — только для dev, в проде указать реальный фронтенд домен
+# CORS settings - allow all origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000",  # Your frontend URL
+    "http://192.168.0.60:3000",],  # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # --- Passlib ---
@@ -126,10 +131,15 @@ def login(
     password: str = Form(...),
     db: Session = Depends(get_db),
 ):
+    print("Login attempt for user:", username)
+    print("Login attempt with password:", password)
     user = db.query(models.User).filter(models.User.name == username).first()
+    print('User:', user)
     if not user or not pwd_context.verify(password, user.hashed_password):
+        print('Login failed.')
         raise HTTPException(status_code=401, detail="Неверные данные")
     request.session["user"] = user.name
+    print('Session created for user:', user.name)
     return {"message": "Вход выполнен", "user": user.name}
 
 
@@ -217,4 +227,5 @@ def phrase(request: Request, phrase: dto.Phrase, db: Session = Depends(get_db)):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # Run on all network interfaces (0.0.0.0) instead of just localhost
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

@@ -22,7 +22,7 @@ export function useAuth() {
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const apiUrl = 'http://localhost:8000/api';
+  const apiUrl = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     // Check if user is logged in on initial load
@@ -315,7 +315,7 @@ function SecretPage() {
   useEffect(() => {
     const fetchSecret = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/secret', {
+        const response = await fetch(process.env.REACT_APP_API_URL+'/secret', {
           credentials: 'include',
         });
         const data = await response.json();

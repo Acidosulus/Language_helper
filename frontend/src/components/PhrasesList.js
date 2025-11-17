@@ -13,7 +13,7 @@ function PhrasesList() {
     translation: '',
   });
   const { user } = useAuth();
-  const apiUrl = 'http://localhost:8000/api';
+  const apiUrl = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const fetchPhrases = async () => {
