@@ -160,16 +160,58 @@ def me(request: Request, db: Session = Depends(get_db)):
     }
 
 
-@app.get("/api/phrases", response_model=list[dto.PhraseOut])
+@app.get("/api/phrases", response_model=list[dto.Phrase])
 def phrases_list(
-    request: Request, ready: Literal[0, 1] = 0, db: Session = Depends(get_db)
+    request: Request, ready: Literal["0", "1"] = "0", db: Session = Depends(get_db)
 ):
-    return phrases.get_phrases_by_user(db, request.session.get("user"), ready)
+    return phrases.get_phrases_by_user(db, request.session.get("user"), int(ready))
 
 
-@app.get("/api/phrase/{id_phrase}", response_model=dto.PhraseOut)
-def get_phrase_by_id(id_phrase: int, db: Session = Depends(get_db)):
-    return phrases.get_phrase_by_id(db, id_phrase)
+@app.get("/api/phrase", response_model=dto.Phrase)
+def get_phrase_by_id(
+    request: Request, id_phrase: int, db: Session = Depends(get_db)
+):
+    if request.session.get("user"):
+        return phrases.get_phrase_by_id(
+            db, id_phrase, request.session.get("user")
+        )
+    else:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+
+
+@app.post("/api/phrase/status")
+def set_phrase_status(
+    request: Request,
+    id_phrase: int,
+    status: Literal["0", "1"],
+    db: Session = Depends(get_db),
+):
+    if request.session.get("user"):
+        phrases.set_phrase_status(
+            db, id_phrase, int(status), request.session.get("user")
+        )
+    else:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+
+
+@app.get("/api/phrase/next", response_model=dto.Phrase)
+def get_next_phrase(
+    request: Request, current_phrase_id: int, db: Session = Depends(get_db)
+):
+    if request.session.get("user"):
+        return phrases.get_next_phrase(
+            db, current_phrase_id, request.session.get("user")
+        )
+    else:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+
+
+@app.post("/api/phrase", response_model=dto.Phrase)
+def phrase(request: Request, phrase: dto.Phrase, db: Session = Depends(get_db)):
+    if request.session.get("user"):
+        return phrases.save_phrase(db, phrase, request.session.get("user"))
+    else:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
 
 
 if __name__ == "__main__":

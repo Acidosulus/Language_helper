@@ -1,6 +1,15 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { 
+  BrowserRouter as Router, 
+  Routes, 
+  Route, 
+  Navigate, 
+  useNavigate, 
+  Link 
+} from 'react-router-dom';
 import './App.css';
+import PhrasesList from './components/PhrasesList';
+import PhraseDetail from './components/PhraseDetail';
 
 // Create auth context
 export const AuthContext = createContext();
@@ -110,6 +119,7 @@ function App() {
               {user ? (
                 <>
                   <span>Welcome, {user.username}!</span>
+                  <Link to="/phrases" className="nav-link">My Phrases</Link>
                   <button onClick={logout}>Logout</button>
                 </>
               ) : (
@@ -136,6 +146,14 @@ function App() {
                 path="/secret"
                 element={user ? <SecretPage /> : <Navigate to="/login" />}
               />
+              <Route
+                path="/phrases"
+                element={user ? <PhrasesList /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/phrases/:id_phrase"
+                element={user ? <PhraseDetail /> : <Navigate to="/login" />}
+              />
             </Routes>
           </main>
         </div>
@@ -152,6 +170,7 @@ function Home() {
       {user ? (
         <div className="dashboard">
           <p>You are logged in as {user.username}</p>
+          <Link to="/phrases" className="btn">View My Phrases</Link>
           <a href="/secret" className="btn">Go to Secret Page</a>
         </div>
       ) : (

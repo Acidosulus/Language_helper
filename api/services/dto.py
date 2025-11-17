@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class PhraseOut(BaseModel):
+class Phrase(BaseModel):
     id_phrase: int
     phrase: str
     translation: Optional[str]
