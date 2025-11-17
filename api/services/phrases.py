@@ -49,7 +49,7 @@ def set_phrase_as_viewed(db: Session, id_phrase: int, username: str):
     )
     phrase.last_view = datetime.utcnow()
     phrase.show_count += 1
-    db.commit()
+    db.flush()
 
 
 def get_next_phrase(db: Session, current_phrase_id: int, username: str):
@@ -79,7 +79,13 @@ def save_phrase(db: Session, phrase: models.Phrase, username: str):
         phrase.translation = phrase.translation
     else:
         phrase = models.Phrase(
-            **phrase, user_id=users.get_user_id(db, username)
+            phrase=phrase.phrase,
+            translation=phrase.translation,
+            show_count=0,
+            ready=0,
+            last_view=datetime.utcnow(),
+            dt=datetime.utcnow(),
+            user_id=users.get_user_id(db, username)
         )
         db.add(phrase)
 
