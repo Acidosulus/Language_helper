@@ -10,6 +10,7 @@ import {
 import './App.css';
 import PhrasesList from './components/PhrasesList';
 import PhraseDetail from './components/PhraseDetail';
+import LearnPhrases from './components/LearnPhrases';
 
 // Create auth context
 export const AuthContext = createContext();
@@ -149,6 +150,10 @@ function App() {
               <Route
                 path="/phrases"
                 element={user ? <PhrasesList /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/phrases/learn"
+                element={user ? <LearnPhrases /> : <Navigate to="/login" />}
               />
               <Route
                 path="/phrases/:id_phrase"
