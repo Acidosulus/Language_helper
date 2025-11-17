@@ -5,14 +5,14 @@ from pydantic import BaseModel
 
 
 class Phrase(BaseModel):
-    id_phrase: int
+    id_phrase: Optional[int] = None
     phrase: str
-    translation: Optional[str]
-    show_count: Optional[int]
-    ready: int
-    user_id: int
-    last_view: Optional[datetime]
-    dt: Optional[datetime]
+    translation: str = ""
+    show_count: int = 0
+    ready: int = 0
+    user_id: Optional[int] = None
+    last_view: Optional[datetime] = None
+    dt: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
