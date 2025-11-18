@@ -1,7 +1,6 @@
 from sqlalchemy import (
     Column,
     Integer,
-    BigInteger,
     Text,
     String,
     ForeignKey,
@@ -28,12 +27,8 @@ class User(Base):
     phrases = relationship("Phrase", back_populates="user", lazy="select")
     syllables = relationship("Syllable", back_populates="user", lazy="select")
 
-    hp_pages = relationship("HpPage", back_populates="user", lazy="select")
-    hp_rows = relationship("HpRow", back_populates="user", lazy="select")
-    hp_tiles = relationship("HpTile", back_populates="user", lazy="select")
-
-
-# ---------------- BOOKS ---------------- #
+    def __repr__(self):
+        return f"<User(id={self.user_id}, name='{self.name}')>"
 
 
 class Book(Base):
@@ -48,6 +43,9 @@ class Book(Base):
     user = relationship("User", back_populates="books", lazy="selectin")
     sentences = relationship("Sentence", back_populates="book", lazy="selectin")
 
+    def __repr__(self):
+        return f"<Book(id={self.id_book}, book_name='{self.book_name}', current_paragraph={self.current_paragraph}, user_id={self.user_id})>"
+
 
 class Sentence(Base):
     __tablename__ = "sentences"
@@ -58,9 +56,6 @@ class Sentence(Base):
     id_sentence = Column(Integer, primary_key=True)
 
     book = relationship("Book", back_populates="sentences", lazy="selectin")
-
-
-# ---------------- PHRASES ---------------- #
 
 
 class Phrase(Base):
@@ -77,130 +72,51 @@ class Phrase(Base):
 
     user = relationship("User", back_populates="phrases", lazy="selectin")
 
-
-# ---------------- SYLLABLES ---------------- #
+    def __repr__(self):
+        return f"<Phrase(id={self.id_phrase}, phrase='{self.phrase}' translation='{self.translation}')>"
 
 
 class Syllable(Base):
     __tablename__ = "syllables"
 
-    word = Column(Text, nullable=False)
+    word = Column(Text, nullable=False, unique=True)
     transcription = Column(Text)
     translations = Column(Text)
     examples = Column(Text)
     show_count = Column(Integer)
     ready = Column(Integer)
     last_view = Column(TIMESTAMP)
-    syllable_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"))
+    syllable_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"))
 
-    user = relationship("User", back_populates="syllables", lazy="selectin")
+    user = relationship("User", back_populates="syllables")
 
+    paragraphs = relationship(
+        "SyllableParagraph",
+        back_populates="syllable",
+        order_by="SyllableParagraph.sequence",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
 
-# ---------------- HOMEPAGE STRUCTURE ---------------- #
-
-
-class HpPage(Base):
-    __tablename__ = "hp_pages"
-
-    page_id = Column(BigInteger, primary_key=True)
-    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
-    page_name = Column(Text, nullable=False)
-    index = Column(BigInteger, default=0)
-    default = Column(Integer)
-
-    user = relationship("User", back_populates="hp_pages", lazy="selectin")
-    rows = relationship("HpPageRow", back_populates="page", lazy="selectin")
+    def __repr__(self):
+        return f"<Syllable(id={self.syllable_id}, word='{self.word}')>"
 
 
-class HpRow(Base):
-    __tablename__ = "hp_rows"
+class SyllableParagraph(Base):
+    __tablename__ = "syllables_paragraphs"
 
-    row_id = Column(BigInteger, primary_key=True)
-    user_id = Column(BigInteger, ForeignKey("users.user_id"))
-    row_name = Column(Text, nullable=False)
-    row_type = Column(BigInteger, default=0)
-    row_index = Column(BigInteger, default=0)
+    syllable_id = Column(
+        Integer,
+        ForeignKey("syllables.syllable_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    example = Column(Text)
+    translate = Column(Text, name="translate")
+    sequence = Column(Integer, name="sequence")
+    paragraph_id = Column(Integer, primary_key=True, autoincrement=True)
 
-    user = relationship("User", back_populates="hp_rows", lazy="selectin")
-    tiles = relationship("HpRowTile", back_populates="row", lazy="selectin")
+    syllable = relationship("Syllable", back_populates="paragraphs")
 
-
-class HpTile(Base):
-    __tablename__ = "hp_tiles"
-
-    tile_id = Column(BigInteger, primary_key=True)
-    user_id = Column(BigInteger, ForeignKey("users.user_id"))
-    name = Column(Text, nullable=False)
-    hyperlink = Column(Text)
-    onclick = Column(Text)
-    icon = Column(Text, nullable=False)
-    color = Column(Text, nullable=False)
-
-    user = relationship("User", back_populates="hp_tiles", lazy="selectin")
-
-
-class HpPageRow(Base):
-    __tablename__ = "hp_page_rows"
-
-    id = Column(BigInteger, primary_key=True)
-    page_id = Column(BigInteger, ForeignKey("hp_pages.page_id"))
-    row_id = Column(BigInteger, ForeignKey("hp_rows.row_id"))
-    row_index = Column(BigInteger, default=0)
-    user_id = Column(Integer, nullable=False)
-
-    page = relationship("HpPage", back_populates="rows", lazy="selectin")
-    row = relationship("HpRow", lazy="selectin")
-
-
-class HpRowTile(Base):
-    __tablename__ = "hp_row_tiles"
-
-    id = Column(BigInteger, primary_key=True)
-    row_id = Column(BigInteger, ForeignKey("hp_rows.row_id"))
-    tile_id = Column(BigInteger)
-    tile_index = Column(BigInteger, default=0)
-    user_id = Column(Integer)
-
-    row = relationship("HpRow", back_populates="tiles", lazy="selectin")
-
-
-# ---------------- MESSAGES ---------------- #
-
-
-class Message(Base):
-    __tablename__ = "messages"
-
-    id = Column(BigInteger, primary_key=True)
-    dt = Column(TIMESTAMP)
-    message = Column(String)
-    icon = Column(String)
-    user_id = Column(BigInteger)
-    hyperlink = Column(String)
-    action = Column(String)
-
-
-# ---------------- READING JOURNAL ---------------- #
-
-
-class ReadingJournal(Base):
-    __tablename__ = "reading_journal"
-
-    row_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer)
-    id_paragraph = Column(Integer)
-    dt = Column(TIMESTAMP)
-    id_book = Column(Integer)
-
-
-# ---------------- TRANSITIONS ---------------- #
-
-
-class HpTransition(Base):
-    __tablename__ = "hp_transitions"
-
-    id = Column(BigInteger, primary_key=True)
-    user_id = Column(BigInteger, nullable=False)
-    tile_id = Column(BigInteger)
-    hyperlink = Column(String)
-    dt = Column(TIMESTAMP)
+    def __repr__(self):
+        return f"<SyllableParagraph(id={self.paragraph_id}, syllable_id={self.syllable_id}, sequence={self.sequence})>"

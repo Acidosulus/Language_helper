@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
 from services import models, dto
 from services import phrases
+from services import syllables
 
 
 # --- FastAPI ---
@@ -24,25 +25,32 @@ app.add_middleware(
 # CORS settings - allow all origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000",  # Your frontend URL
-    "http://192.168.0.60:3000",],  # Allow all origins
+    allow_origins=[
+        "http://localhost:3000",  # Your frontend URL
+        "http://192.168.0.60:3000",
+    ],  # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
 
-# --- Passlib ---
 pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
-# --- SQLAlchemy ---
 DATABASE_URL = (
     "postgresql+psycopg2://postgres:321@192.168.0.112/language_helper"
 )
-engine = create_engine(DATABASE_URL, echo=True, future=True)
-SessionLocal = sessionmaker(bind=engine, autoflush=True, expire_on_commit=False)
+engine = create_engine(
+    DATABASE_URL,
+    echo=False,
+    future=True,
+)
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=True,
+    expire_on_commit=False,
+)
 Base = declarative_base()
-# Base.metadata.create_all(bind=engine)
 
 
 def get_db():
@@ -134,12 +142,12 @@ def login(
     print("Login attempt for user:", username)
     print("Login attempt with password:", password)
     user = db.query(models.User).filter(models.User.name == username).first()
-    print('User:', user)
+    print("User:", user)
     if not user or not pwd_context.verify(password, user.hashed_password):
-        print('Login failed.')
+        print("Login failed.")
         raise HTTPException(status_code=401, detail="Неверные данные")
     request.session["user"] = user.name
-    print('Session created for user:', user.name)
+    print("Session created for user:", user.name)
     return {"message": "Вход выполнен", "user": user.name}
 
 
@@ -172,9 +180,13 @@ def me(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/api/phrases", response_model=list[dto.Phrase])
 def phrases_list(
-    request: Request, ready: Literal["0", "1"] = "0", db: Session = Depends(get_db)
+    request: Request,
+    ready: Literal["0", "1"] = "0",
+    db: Session = Depends(get_db),
 ):
-    return phrases.get_phrases_by_user(db, request.session.get("user"), int(ready))
+    return phrases.get_phrases_by_user(
+        db, request.session.get("user"), int(ready)
+    )
 
 
 @app.get("/api/phrase", response_model=dto.Phrase)
@@ -217,15 +229,45 @@ def get_next_phrase(
 
 
 @app.post("/api/phrase", response_model=dto.Phrase)
-def phrase(request: Request, phrase: dto.Phrase, db: Session = Depends(get_db)):
+def phrase(
+    request: Request,
+    phrase: dto.Phrase,
+    db: Session = Depends(get_db_autocommit),
+):
     if request.session.get("user"):
         return phrases.save_phrase(db, phrase, request.session.get("user"))
     else:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
 
 
+@app.get("/api/syllable", response_model=dto.Syllable)
+def get_syllable(
+    request: Request, syllable_id: int = None, db: Session = Depends(get_db)
+):
+    return syllables.get_syllable(db, syllable_id, request.session.get("user"))
+
+
+@app.get("/api/syllables", response_model=list[dto.Syllable])
+def all_syllables(
+    request: Request, limit=100, offset=0, db: Session = Depends(get_db)
+):
+    return syllables.get_syllables(
+        db, limit=limit, offset=offset, username=request.session.get("user")
+    )
+
+
+@app.post("/api/syllable", response_model=dto.Syllable)
+def save_syllable(
+    request: Request,
+    syllable_dto: dto.Syllable,
+    db: Session = Depends(get_db_autocommit),
+):
+    return syllables.save_syllable(
+        db, syllable_dto, request.session.get("user")
+    )
+
+
 if __name__ == "__main__":
     import uvicorn
 
-    # Run on all network interfaces (0.0.0.0) instead of just localhost
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

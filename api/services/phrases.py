@@ -68,26 +68,26 @@ def get_next_phrase(db: Session, current_phrase_id: int, username: str):
 
 def save_phrase(db: Session, phrase: models.Phrase, username: str):
     if phrase.id_phrase:
-        phrase = (
+        phrase_db = (
             db.query(models.Phrase)
             .join(models.User)
             .filter(models.Phrase.id_phrase == phrase.id_phrase)
             .filter(models.User.name == username)
             .first()
         )
-        phrase.phrase = phrase.phrase
-        phrase.translation = phrase.translation
+        phrase_db.phrase = phrase.phrase
+        phrase_db.translation = phrase.translation
     else:
-        phrase = models.Phrase(
+        phrase_db = models.Phrase(
             phrase=phrase.phrase,
             translation=phrase.translation,
             show_count=0,
             ready=0,
             last_view=datetime.utcnow(),
             dt=datetime.utcnow(),
-            user_id=users.get_user_id(db, username)
+            user_id=users.get_user_id(db, username),
         )
-        db.add(phrase)
+        db.add(phrase_db)
 
     db.commit()
-    return phrase
+    return phrase_db
