@@ -96,8 +96,14 @@ function SyllablesList() {
                     >
                       View
                     </Link>
+                    <Link
+                      to={`/syllables/${syllable.syllable_id}/edit`}
+                      className="btn btn-sm btn-warning me-2"
+                    >
+                      Edit
+                    </Link>
                     <button
-                      onClick={() => handleDelete(syllable.id)}
+                      onClick={() => handleDelete(syllable.syllable_id)}
                       className="btn btn-sm btn-danger"
                     >
                       Delete
