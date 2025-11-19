@@ -14,7 +14,7 @@ function PhraseDetail() {
   useEffect(() => {
     const fetchPhrase = async () => {
       try {
-        const response = await fetch(`${apiUrl}/phrase/${id_phrase}`, {
+        const response = await fetch(`${apiUrl}/phrase?id_phrase=${id_phrase}`, {
           credentials: 'include',
         });
         if (!response.ok) {
