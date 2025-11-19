@@ -225,7 +225,20 @@ function SyllableForm() {
           {syllable.paragraphs && syllable.paragraphs.map((para, index) => (
             <div key={para.paragraph_id || index} className="card mb-3">
               <div className="card-body">
-                <div className="d-flex justify-content-end">
+                <div className="d-flex justify-content-end gap-2 mb-2">
+                  <button 
+                    type="button" 
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => {
+                      setNewParagraph({
+                        example: para.example,
+                        translate: para.translate
+                      });
+                      removeParagraph(index);
+                    }}
+                  >
+                    Delete
+                  </button>
                   <button 
                     type="button" 
                     className="btn-close" 
