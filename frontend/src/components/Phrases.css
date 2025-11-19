@@ -141,10 +141,55 @@
   margin-bottom: 15px;
 }
 
-.translation {
-  font-size: 22px;
+.translation, .transcription, .examples {
+  font-size: 20px;
   color: #666;
+  margin: 10px 0;
+  line-height: 1.5;
+}
+
+.transcription {
+  color: #888;
   font-style: italic;
+  margin-bottom: 20px;
+}
+
+.examples {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px dashed #e0e0e0;
+}
+
+.paragraphs {
+  margin-top: 25px;
+  text-align: left;
+}
+
+.paragraph {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+  border-left: 3px solid #4a90e2;
+}
+
+.example {
+  font-size: 16px;
+  margin-bottom: 5px;
+}
+
+.example-translation {
+  font-size: 14px;
+  color: #777;
+  font-style: italic;
+}
+
+.no-syllables {
+  padding: 30px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  color: #666;
+  font-size: 18px;
 }
 
 .next-button {

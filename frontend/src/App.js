@@ -14,6 +14,7 @@ import LearnPhrases from './components/LearnPhrases';
 import SyllablesList from './components/SyllablesList';
 import SyllableDetail from './components/SyllableDetail';
 import SyllableForm from './components/SyllableForm';
+import LearnSyllables from './components/LearnSyllables';
 
 // Create auth context
 export const AuthContext = createContext();
@@ -124,7 +125,8 @@ function App() {
                 <>
                   <span>Welcome, {user.username}!</span>
                   <Link to="/phrases" className="nav-link">My Phrases</Link>
-                  <button onClick={logout}>Logout</button>
+                  <Link to="/syllables/learn" className="nav-link">Learn Syllables</Link>
+                  <button onClick={logout} className="nav-button">Logout</button>
                 </>
               ) : (
                 <>
@@ -178,6 +180,10 @@ function App() {
               <Route
                 path="/syllables/:id/edit"
                 element={user ? <SyllableForm /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/syllables/learn"
+                element={user ? <LearnSyllables /> : <Navigate to="/login" />}
               />
             </Routes>
           </main>
