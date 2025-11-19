@@ -11,6 +11,9 @@ import './App.css';
 import PhrasesList from './components/PhrasesList';
 import PhraseDetail from './components/PhraseDetail';
 import LearnPhrases from './components/LearnPhrases';
+import SyllablesList from './components/SyllablesList';
+import SyllableDetail from './components/SyllableDetail';
+import SyllableForm from './components/SyllableForm';
 
 // Create auth context
 export const AuthContext = createContext();
@@ -159,6 +162,23 @@ function App() {
                 path="/phrases/:id_phrase"
                 element={user ? <PhraseDetail /> : <Navigate to="/login" />}
               />
+              {/* Syllables Routes */}
+              <Route
+                path="/syllables"
+                element={user ? <SyllablesList /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/syllables/new"
+                element={user ? <SyllableForm /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/syllables/:id"
+                element={user ? <SyllableDetail /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/syllables/:id/edit"
+                element={user ? <SyllableForm /> : <Navigate to="/login" />}
+              />
             </Routes>
           </main>
         </div>
@@ -175,8 +195,11 @@ function Home() {
       {user ? (
         <div className="dashboard">
           <p>You are logged in as {user.username}</p>
-          <Link to="/phrases" className="btn">View My Phrases</Link>
-          <a href="/secret" className="btn">Go to Secret Page</a>
+          <div className="d-flex gap-2">
+            <Link to="/phrases" className="btn btn-primary">View My Phrases</Link>
+            <Link to="/syllables" className="btn btn-secondary">Manage Syllables</Link>
+            <a href="/secret" className="btn btn-outline-secondary">Go to Secret Page</a>
+          </div>
         </div>
       ) : (
         <div className="welcome">

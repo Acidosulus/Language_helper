@@ -11,28 +11,29 @@ from services import models, dto
 from services import phrases
 from services import syllables
 
-
 # --- FastAPI ---
 app = FastAPI()
-# Секретный ключ в проде должен быть из env. Здесь для локалки.
-app.add_middleware(
-    SessionMiddleware,
-    secret_key="super-secret-key",
-    session_cookie="session_cookie",
-    https_only=False,
-)
 
-# CORS settings - allow all origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",  # Your frontend URL
+        "https://localhost:3000",
+        "https://192.168.0.60:3000",
+        "http://localhost:3000",
         "http://192.168.0.60:3000",
-    ],  # Allow all origins
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
+)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key="super-secret-key-change-in-production",
+    session_cookie="session_cookie",
+    https_only=True,
+    same_site="none",
+    max_age=86400 * 365,
 )
 
 pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
@@ -139,15 +140,10 @@ def login(
     password: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    print("Login attempt for user:", username)
-    print("Login attempt with password:", password)
     user = db.query(models.User).filter(models.User.name == username).first()
-    print("User:", user)
     if not user or not pwd_context.verify(password, user.hashed_password):
-        print("Login failed.")
         raise HTTPException(status_code=401, detail="Неверные данные")
     request.session["user"] = user.name
-    print("Session created for user:", user.name)
     return {"message": "Вход выполнен", "user": user.name}
 
 
@@ -251,9 +247,10 @@ def get_syllable(
 def all_syllables(
     request: Request, limit=100, offset=0, db: Session = Depends(get_db)
 ):
-    return syllables.get_syllables(
+    result = syllables.get_syllables(
         db, limit=limit, offset=offset, username=request.session.get("user")
     )
+    return result
 
 
 @app.post("/api/syllable", response_model=dto.Syllable)
@@ -270,4 +267,11 @@ def save_syllable(
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=False,
+        ssl_certfile="localhost+3.pem",
+        ssl_keyfile="localhost+3-key.pem",
+    )
