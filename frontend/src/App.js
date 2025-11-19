@@ -5,9 +5,13 @@ import {
   Route, 
   Navigate, 
   useNavigate, 
-  Link 
+  Link,
+  NavLink 
 } from 'react-router-dom';
+import { Nav, Navbar, Container, NavDropdown } from 'react-bootstrap';
+import { FaBook, FaList, FaGraduationCap, FaHome } from 'react-icons/fa';
 import './App.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import PhrasesList from './components/PhrasesList';
 import PhraseDetail from './components/PhraseDetail';
 import LearnPhrases from './components/LearnPhrases';
@@ -15,6 +19,7 @@ import SyllablesList from './components/SyllablesList';
 import SyllableDetail from './components/SyllableDetail';
 import SyllableForm from './components/SyllableForm';
 import LearnSyllables from './components/LearnSyllables';
+import BooksList from './components/BooksList';
 
 // Create auth context
 export const AuthContext = createContext();
@@ -185,6 +190,11 @@ function App() {
                 path="/syllables/learn"
                 element={user ? <LearnSyllables /> : <Navigate to="/login" />}
               />
+              {/* Books Routes */}
+              <Route
+                path="/books"
+                element={user ? <BooksList /> : <Navigate to="/login" />}
+              />
             </Routes>
           </main>
         </div>
@@ -196,26 +206,75 @@ function App() {
 function Home() {
   const { user } = useAuth();
   return (
-    <div className="container">
-      <h2>Welcome to Language Helper</h2>
+    <div className="container mt-5">
+      <h1 className="text-center mb-4">Welcome to Language Helper</h1>
+      
       {user ? (
-        <div className="dashboard">
-          <p>You are logged in as {user.username}</p>
-          <div className="d-flex gap-2">
-            <Link to="/phrases" className="btn btn-primary">View My Phrases</Link>
-            <Link to="/syllables" className="btn btn-secondary">Manage Syllables</Link>
-            <a href="/secret" className="btn btn-outline-secondary">Go to Secret Page</a>
+        <div className="text-center">
+          <p className="lead">Welcome back, {user.username}!</p>
+          <div className="d-flex justify-content-center gap-3 flex-wrap">
+            <Link to="/phrases" className="btn btn-primary btn-lg">
+              View My Phrases
+            </Link>
+            <Link to="/syllables" className="btn btn-secondary btn-lg">
+              Manage Syllables
+            </Link>
+            <Link to="/books" className="btn btn-success btn-lg">
+              Browse Books
+            </Link>
+            <Link to="/secret" className="btn btn-outline-secondary">
+              My Profile
+            </Link>
           </div>
         </div>
       ) : (
-        <div className="welcome">
-          <p>Please login or register to continue.</p>
-          <div className="auth-links">
-            <a href="/login" className="btn">Login</a>
-            <a href="/register" className="btn">Register</a>
+        <div className="text-center">
+          <p className="lead mb-4">Please login or register to continue.</p>
+          <div className="d-flex justify-content-center gap-3">
+            <Link to="/login" className="btn btn-primary btn-lg">Login</Link>
+            <Link to="/register" className="btn btn-outline-secondary btn-lg">Register</Link>
           </div>
         </div>
       )}
+      
+      <div className="mt-5">
+        <h2 className="text-center mb-4">Features</h2>
+        <div className="row">
+          <div className="col-md-4 mb-4">
+            <div className="card h-100">
+              <div className="card-body text-center">
+                <h3>Phrases</h3>
+                <p>Save and practice your favorite phrases</p>
+                <Link to="/phrases" className="btn btn-outline-primary">
+                  Go to Phrases
+                </Link>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-4 mb-4">
+            <div className="card h-100">
+              <div className="card-body text-center">
+                <h3>Books</h3>
+                <p>Read and learn from books in your target language</p>
+                <Link to="/books" className="btn btn-outline-success">
+                  Browse Books
+                </Link>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-4 mb-4">
+            <div className="card h-100">
+              <div className="card-body text-center">
+                <h3>Syllables</h3>
+                <p>Practice pronunciation with syllable exercises</p>
+                <Link to="/syllables" className="btn btn-outline-secondary">
+                  Manage Syllables
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
