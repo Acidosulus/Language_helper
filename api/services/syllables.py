@@ -1,16 +1,16 @@
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy.orm import Session, selectinload
-from services import models
-
+from services import models, dto
 from services import users
 
 
-def get_syllable(db: Session, id_syllable: int, username: str):
+def get_syllable(db: Session, syllable_id: int, username: str):
     return (
         db.query(models.Syllable)
         .join(models.User)
-        .filter(models.Syllable.syllable_id == id_syllable)
+        .filter(models.Syllable.syllable_id == syllable_id)
         .filter(models.User.user_id == users.get_user_id(db, username))
         .options(selectinload(models.Syllable.paragraphs))
         .first()
@@ -126,3 +126,37 @@ def save_syllable(
 
     db.flush()
     return syllable_db
+
+
+def set_syllable_as_viewed(db: Session, sillable_id: int, username: str):
+    syllable = (
+        db.query(models.Syllable)
+        .join(models.User)
+        .filter(models.Syllable.syllable_id == sillable_id)
+        .filter(models.User.name == username)
+        .first()
+    )
+    syllable.last_view = datetime.utcnow()
+    syllable.show_count += 1
+    db.flush()
+
+
+def get_next_syllable(db: Session, current_syllable_id: int, username: str) -> Optional[dto.Syllable]:
+    if current_syllable_id:
+        set_syllable_as_viewed(db, current_syllable_id, username)
+
+    syllable = (
+        db.query(models.Syllable)
+        .join(models.User)
+        .filter(models.Syllable.ready == 0)
+        .filter(models.User.name == username)
+        .options(selectinload(models.Syllable.paragraphs))
+        .order_by(models.Syllable.last_view)
+        .first()
+    )
+    
+    if not syllable:
+        return None
+        
+    # Конвертируем SQLAlchemy модель в Pydantic модель
+    return dto.Syllable.model_validate(syllable, from_attributes=True)

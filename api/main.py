@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -259,13 +259,26 @@ def save_syllable(
     syllable_dto: dto.Syllable,
     db: Session = Depends(get_db_autocommit),
 ):
-
     from rich import print
+
     print(syllable_dto)
 
     return syllables.save_syllable(
         db, syllable_dto, request.session.get("user")
     )
+
+
+@app.get("/api/syllable/next", response_model=Optional[dto.Syllable])
+def get_next_syllable(
+    request: Request,
+    current_syllable_id: int,
+    db: Session = Depends(get_db_autocommit),
+):
+    username = request.session.get("user")
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+        
+    return syllables.get_next_syllable(db, current_syllable_id, username)
 
 
 if __name__ == "__main__":
