@@ -7,11 +7,8 @@ from passlib.context import CryptContext
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
-from services import models, dto
-from services import phrases
-from services import syllables
+from services import syllables, books, phrases, models, dto
 
-# --- FastAPI ---
 app = FastAPI()
 
 app.add_middleware(
@@ -279,6 +276,11 @@ def get_next_syllable(
         raise HTTPException(status_code=401, detail="Not authenticated")
         
     return syllables.get_next_syllable(db, current_syllable_id, username)
+
+
+@app.get("/api/books", response_model=list[dto.BookWithStatsDTO])
+def get_books(request: Request, db: Session = Depends(get_db)):
+    return books.get_user_books_with_stats(db, request.session.get("user"))
 
 
 if __name__ == "__main__":

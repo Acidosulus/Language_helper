@@ -6,71 +6,62 @@ from sqlalchemy import (
     ForeignKey,
     TIMESTAMP,
 )
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.orm import relationship, declarative_base, Mapped, mapped_column
 
-Base = declarative_base()
+from typing import Optional, List
+from datetime import datetime
+
+from sqlalchemy import ForeignKey, Integer, Text, String, TIMESTAMP
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
-# ---------------- USERS ---------------- #
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):
     __tablename__ = "users"
 
-    user_id = Column(Integer, primary_key=True)
-    name = Column(Text)
-    uuid = Column(String, nullable=False)
-    hashed_password = Column(Text)
+    # Mapped[int] подразумевает NOT NULL, primary_key настраиваем в mapped_column
+    user_id: Mapped[int] = mapped_column(primary_key=True)
 
-    # relations
-    books = relationship("Book", back_populates="user", lazy="select")
-    phrases = relationship("Phrase", back_populates="user", lazy="select")
-    syllables = relationship("Syllable", back_populates="user", lazy="select")
+    # Mapped[Optional[str]] = mapped_column(Text) -> это эквивалент Column(Text, nullable=True)
+    name: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Mapped[str] без Optional -> это эквивалент Column(..., nullable=False)
+    uuid: Mapped[str] = mapped_column(String)
+
+    hashed_password: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Relations
+    # lazy="select" является значением по умолчанию, его можно не писать явно,
+    # но я оставил комментарии для ясности.
+
+    # Примечание: Класс "Book" должен быть определен (или импортирован),
+    # чтобы связь работала, либо используйте строковое имя "Book" во всех местах.
+    books: Mapped[List["Book"]] = relationship(back_populates="user")
+
+    phrases: Mapped[List["Phrase"]] = relationship(back_populates="user")
+
+    syllables: Mapped[List["Syllable"]] = relationship(back_populates="user")
 
     def __repr__(self):
         return f"<User(id={self.user_id}, name='{self.name}')>"
 
 
-class Book(Base):
-    __tablename__ = "books"
-
-    id_book = Column(Integer, primary_key=True)
-    book_name = Column(Text, nullable=False)
-    current_paragraph = Column(Integer)
-    user_id = Column(Integer, ForeignKey("users.user_id"))
-    dt = Column(TIMESTAMP)
-
-    user = relationship("User", back_populates="books", lazy="selectin")
-    sentences = relationship("Sentence", back_populates="book", lazy="selectin")
-
-    def __repr__(self):
-        return f"<Book(id={self.id_book}, book_name='{self.book_name}', current_paragraph={self.current_paragraph}, user_id={self.user_id})>"
-
-
-class Sentence(Base):
-    __tablename__ = "sentences"
-
-    sentence = Column(Text, nullable=False)
-    id_book = Column(Integer, ForeignKey("books.id_book"))
-    id_paragraph = Column(Integer, nullable=False)
-    id_sentence = Column(Integer, primary_key=True)
-
-    book = relationship("Book", back_populates="sentences", lazy="selectin")
-
-
 class Phrase(Base):
     __tablename__ = "phrases"
 
-    id_phrase = Column(Integer, primary_key=True)
-    phrase = Column(Text)
-    translation = Column(Text)
-    show_count = Column(Integer)
-    ready = Column(Integer, nullable=False)
-    user_id = Column(Integer, ForeignKey("users.user_id"))
-    last_view = Column(TIMESTAMP)
-    dt = Column(TIMESTAMP)
+    id_phrase: Mapped[int] = mapped_column(primary_key=True)
+    phrase: Mapped[Optional[str]] = mapped_column(Text)
+    translation: Mapped[Optional[str]] = mapped_column(Text)
+    show_count: Mapped[Optional[int]] = mapped_column(Integer)
+    ready: Mapped[int] = mapped_column(Integer)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.user_id"))
+    last_view: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)
+    dt: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)
 
-    user = relationship("User", back_populates="phrases", lazy="selectin")
+    user: Mapped["User"] = relationship(back_populates="phrases", lazy="selectin")
 
     def __repr__(self):
         return f"<Phrase(id={self.id_phrase}, phrase='{self.phrase}' translation='{self.translation}')>"
@@ -79,20 +70,19 @@ class Phrase(Base):
 class Syllable(Base):
     __tablename__ = "syllables"
 
-    word = Column(Text, nullable=False, unique=True)
-    transcription = Column(Text)
-    translations = Column(Text)
-    examples = Column(Text)
-    show_count = Column(Integer)
-    ready = Column(Integer)
-    last_view = Column(TIMESTAMP)
-    syllable_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"))
+    # В оригинале: nullable=False, unique=True
+    word: Mapped[str] = mapped_column(Text, unique=True)
+    transcription: Mapped[Optional[str]] = mapped_column(Text)
+    translations: Mapped[Optional[str]] = mapped_column(Text)
+    examples: Mapped[Optional[str]] = mapped_column(Text)
+    show_count: Mapped[Optional[int]] = mapped_column(Integer)
+    ready: Mapped[Optional[int]] = mapped_column(Integer)
+    last_view: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)
+    syllable_id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.user_id", ondelete="SET NULL"))
 
-    user = relationship("User", back_populates="syllables")
-
-    paragraphs = relationship(
-        "SyllableParagraph",
+    user: Mapped["User"] = relationship(back_populates="syllables")
+    paragraphs: Mapped[List["SyllableParagraph"]] = relationship(
         back_populates="syllable",
         order_by="SyllableParagraph.sequence",
         lazy="selectin",
@@ -106,17 +96,41 @@ class Syllable(Base):
 class SyllableParagraph(Base):
     __tablename__ = "syllables_paragraphs"
 
-    syllable_id = Column(
-        Integer,
-        ForeignKey("syllables.syllable_id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    example = Column(Text)
-    translate = Column(Text, name="translate")
-    sequence = Column(Integer, name="sequence")
-    paragraph_id = Column(Integer, primary_key=True, autoincrement=True)
+    paragraph_id: Mapped[int] = mapped_column(primary_key=True)
 
-    syllable = relationship("Syllable", back_populates="paragraphs")
+    syllable_id: Mapped[int] = mapped_column(
+        ForeignKey("syllables.syllable_id", ondelete="CASCADE")
+    )
+
+    example: Mapped[Optional[str]] = mapped_column(Text)
+
+    translate: Mapped[Optional[str]] = mapped_column(Text, name="translate")
+    sequence: Mapped[Optional[int]] = mapped_column(Integer, name="sequence")
+
+    syllable: Mapped["Syllable"] = relationship(back_populates="paragraphs")
 
     def __repr__(self):
         return f"<SyllableParagraph(id={self.paragraph_id}, syllable_id={self.syllable_id}, sequence={self.sequence})>"
+
+class Book(Base):
+    __tablename__ = "books"
+
+    id_book: Mapped[int] = mapped_column(primary_key=True)
+    book_name: Mapped[str] = mapped_column(Text, nullable=False)
+    current_paragraph: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), nullable=False)
+    dt: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP, nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="books")
+    sentences: Mapped[List["Sentence"]] = relationship(back_populates="book", cascade="all, delete-orphan")
+
+
+class Sentence(Base):
+    __tablename__ = "sentences"
+
+    id_sentence: Mapped[int] = mapped_column(primary_key=True)
+    sentence: Mapped[str] = mapped_column(Text, nullable=False)
+    id_book: Mapped[int] = mapped_column(ForeignKey("books.id_book"), nullable=False)
+    id_paragraph: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    book: Mapped["Book"] = relationship(back_populates="sentences")

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class Phrase(BaseModel):
@@ -46,3 +46,43 @@ class Syllable(BaseModel):
     class Config:
         from_attributes = True
         populate_by_name = True
+
+
+class SentenceDTO(BaseModel):
+    id_sentence: Optional[int] = Field(default=None, alias="id_sentence")
+    sentence: str
+    id_book: int
+    id_paragraph: int
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+
+
+class BookDTO(BaseModel):
+    id_book: Optional[int] = Field(default=None, alias="id_book")
+    book_name: str
+    current_paragraph: Optional[int] = None
+    user_id: int
+    dt: Optional[datetime] = None
+
+    # Вложенный список DTO для связи relationship
+    sentences: list[SentenceDTO] = Field(default_factory=list)
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+
+
+class BookWithStatsDTO(BaseModel):
+    id_book: int
+    book_name: str
+    dt: Optional[datetime] = None
+    user_id: int
+
+    # Поля из label(...)
+    Min_Paragraph_Number: Optional[int] = None
+    Max_Paragraph_Number: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
