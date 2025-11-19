@@ -259,6 +259,10 @@ def save_syllable(
     syllable_dto: dto.Syllable,
     db: Session = Depends(get_db_autocommit),
 ):
+
+    from rich import print
+    print(syllable_dto)
+
     return syllables.save_syllable(
         db, syllable_dto, request.session.get("user")
     )

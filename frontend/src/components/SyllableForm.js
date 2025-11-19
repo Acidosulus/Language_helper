@@ -74,19 +74,27 @@ function SyllableForm() {
   
   const addParagraph = () => {
     if (newParagraph.example.trim() && newParagraph.translate.trim()) {
+      const newPara = {
+        paragraph_id: null,
+        example: newParagraph.example.trim(),
+        translate: newParagraph.translate.trim(),
+        syllable_id: id ? parseInt(id) : null,
+        sequence: syllable.paragraphs.length
+      };
+      
       setSyllable(prev => ({
         ...prev,
         paragraphs: [
           ...prev.paragraphs,
-          {
-            paragraph_id: `new-${Date.now()}`,
-            example: newParagraph.example,
-            translate: newParagraph.translate,
-            syllable_id: id || null
-          }
+          newPara
         ]
       }));
+      
+      // Clear the input fields
       setNewParagraph({ example: '', translate: '' });
+      
+      // Log the current state for debugging
+      console.log('Added paragraph. Current paragraphs:', [...syllable.paragraphs, newPara]);
     }
   };
   
@@ -102,17 +110,43 @@ function SyllableForm() {
     setError('');
     
     try {
-      const method = id ? 'PUT' : 'POST';
-      const url = id ? `${apiUrl}/syllable/${id}` : `${apiUrl}/syllable`;
-      
+      const method = 'POST';
+      const url = `${apiUrl}/syllable`;
+
+      // Log the current state before creating the payload
+      console.log('Current syllable state:', syllable);
+      console.log('Current paragraphs:', syllable.paragraphs);
+
+      // Create a clean payload with only the fields that the backend expects
+      const payload = {
+        word: syllable.word || '',
+        transcription: syllable.transcription || '',
+        translations: syllable.translations || '',
+        examples: syllable.examples || '',
+        syllable_id: id ? parseInt(id) : null,
+        paragraphs: syllable.paragraphs.map((p, index) => ({
+          paragraph_id: p.paragraph_id ? parseInt(p.paragraph_id) : null,
+          example: p.example || '',
+          translate: p.translate || '',
+          sequence: typeof p.sequence === 'number' ? p.sequence : index,
+          syllable_id: id ? parseInt(id) : null
+        }))
+      };
+
+      console.log('Sending to API:', JSON.stringify(payload, null, 2));
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(syllable),
+        body: JSON.stringify(payload),
       });
+      
+      // Log the response for debugging
+      const responseData = await response.json();
+      console.log('API Response:', responseData);
 
       if (!response.ok) {
         const errorData = await response.json();
