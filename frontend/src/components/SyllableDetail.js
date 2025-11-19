@@ -94,7 +94,12 @@ function SyllableDetail() {
 
       <div className="card">
         <div className="card-header d-flex justify-content-between align-items-center">
-          <h2>Syllable Details</h2>
+          <div>
+            <h2 className="mb-0">{syllable.word}</h2>
+            {syllable.transcription && (
+              <div className="text-muted">{syllable.transcription}</div>
+            )}
+          </div>
           <div>
             <Link to={`/syllables/${id}/edit`} className="btn btn-warning me-2">
               Edit
@@ -105,15 +110,33 @@ function SyllableDetail() {
           </div>
         </div>
         <div className="card-body">
-          <dl className="row">
-            <dd className="col-sm-9">{syllable.id}</dd>
-
-            <dd className="col-sm-9">{syllable.word}</dd>
-
-            <dd className="col-sm-9">{syllable.translations}</dd>
-
-            {/* Add other fields as needed */}
-          </dl>
+          <div className="mb-4">
+            <h5>Translations:</h5>
+            <div className="ms-3">
+              {syllable.translations.split('\n').map((line, i) => (
+                <p key={i} className="mb-1">{line}</p>
+              ))}
+            </div>
+          </div>
+          
+          {syllable.paragraphs && syllable.paragraphs.length > 0 && (
+            <div className="mt-4">
+              <h5>Examples:</h5>
+              {syllable.paragraphs.map((paragraph, index) => (
+                <div key={paragraph.paragraph_id || index} className="card mb-3">
+                  <div className="card-body">
+                    <p className="card-text">{paragraph.example}</p>
+                    <p className="card-text text-muted">{paragraph.translate}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <div className="mt-4 text-muted small">
+            <div>Show count: {syllable.show_count || 0}</div>
+            <div>Last viewed: {new Date(syllable.last_view).toLocaleString()}</div>
+          </div>
         </div>
         <div className="card-footer">
           <Link to="/syllables" className="btn btn-secondary">
