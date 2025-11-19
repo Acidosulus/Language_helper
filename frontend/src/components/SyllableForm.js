@@ -11,9 +11,16 @@ function SyllableForm() {
   const [loading, setLoading] = useState(!!id);
   const [error, setError] = useState('');
   const [syllable, setSyllable] = useState({
-    text: '',
-    translation: '',
-    // Add other fields as needed
+    word: '',
+    transcription: '',
+    translations: '',
+    examples: null,
+    paragraphs: []
+  });
+  
+  const [newParagraph, setNewParagraph] = useState({
+    example: '',
+    translate: ''
   });
 
   useEffect(() => {
@@ -44,6 +51,49 @@ function SyllableForm() {
     setSyllable(prev => ({
       ...prev,
       [name]: value
+    }));
+  };
+  
+  const handleParagraphChange = (e, index) => {
+    const { name, value } = e.target;
+    setSyllable(prev => ({
+      ...prev,
+      paragraphs: prev.paragraphs.map((p, i) => 
+        i === index ? { ...p, [name]: value } : p
+      )
+    }));
+  };
+  
+  const handleNewParagraphChange = (e) => {
+    const { name, value } = e.target;
+    setNewParagraph(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  const addParagraph = () => {
+    if (newParagraph.example.trim() && newParagraph.translate.trim()) {
+      setSyllable(prev => ({
+        ...prev,
+        paragraphs: [
+          ...prev.paragraphs,
+          {
+            paragraph_id: `new-${Date.now()}`,
+            example: newParagraph.example,
+            translate: newParagraph.translate,
+            syllable_id: id || null
+          }
+        ]
+      }));
+      setNewParagraph({ example: '', translate: '' });
+    }
+  };
+  
+  const removeParagraph = (index) => {
+    setSyllable(prev => ({
+      ...prev,
+      paragraphs: prev.paragraphs.filter((_, i) => i !== index)
     }));
   };
 
@@ -92,33 +142,124 @@ function SyllableForm() {
 
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
-          <label htmlFor="text" className="form-label">
-            Text
+          <label htmlFor="word" className="form-label">
+            Word
           </label>
           <input
             type="text"
             className="form-control"
-            id="text"
-            name="text"
-            value={syllable.text || ''}
+            id="word"
+            name="word"
+            value={syllable.word || ''}
             onChange={handleChange}
             required
           />
         </div>
 
         <div className="mb-3">
-          <label htmlFor="translation" className="form-label">
-            Translation
+          <label htmlFor="transcription" className="form-label">
+            Transcription
           </label>
           <input
             type="text"
             className="form-control"
-            id="translation"
-            name="translation"
-            value={syllable.translation || ''}
+            id="transcription"
+            name="transcription"
+            value={syllable.transcription || ''}
+            onChange={handleChange}
+            placeholder="e.g., |ɪmˈbjuː|"
+          />
+        </div>
+
+        <div className="mb-3">
+          <label htmlFor="translations" className="form-label">
+            Translations (one per line)
+          </label>
+          <textarea
+            className="form-control"
+            id="translations"
+            name="translations"
+            rows="5"
+            value={syllable.translations || ''}
             onChange={handleChange}
             required
           />
+        </div>
+
+        <div className="mb-4">
+          <h4>Examples</h4>
+          {syllable.paragraphs && syllable.paragraphs.map((para, index) => (
+            <div key={para.paragraph_id || index} className="card mb-3">
+              <div className="card-body">
+                <div className="d-flex justify-content-end">
+                  <button 
+                    type="button" 
+                    className="btn-close" 
+                    aria-label="Remove"
+                    onClick={() => removeParagraph(index)}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Example</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="example"
+                    value={para.example || ''}
+                    onChange={(e) => handleParagraphChange(e, index)}
+                    required
+                  />
+                </div>
+                <div className="mb-2">
+                  <label className="form-label">Translation</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="translate"
+                    value={para.translate || ''}
+                    onChange={(e) => handleParagraphChange(e, index)}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+          
+          <div className="card">
+            <div className="card-body">
+              <h5 className="card-title">Add New Example</h5>
+              <div className="mb-3">
+                <label className="form-label">Example</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="example"
+                  value={newParagraph.example}
+                  onChange={handleNewParagraphChange}
+                  placeholder="Enter example sentence"
+                />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Translation</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="translate"
+                  value={newParagraph.translate}
+                  onChange={handleNewParagraphChange}
+                  placeholder="Enter translation"
+                />
+              </div>
+              <button 
+                type="button" 
+                className="btn btn-primary"
+                onClick={addParagraph}
+                disabled={!newParagraph.example.trim() || !newParagraph.translate.trim()}
+              >
+                Add Example
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Add other form fields as needed */}
