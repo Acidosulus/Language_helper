@@ -12,7 +12,7 @@
 
 body {
   background-color: #121212;
-  color: #e0e0e0;
+  color: #f0f0f0; /* lighter default text for higher contrast */
   line-height: 1.6;
 }
 
@@ -77,6 +77,7 @@ main {
   width: 100%;
   margin: 0 auto;
   background-color: #1e1e1e;
+  color: inherit; /* inherit lighter text */
 }
 
 .container {
@@ -88,7 +89,7 @@ main {
   max-width: 800px;
   margin: 2rem auto;
   border: 1px solid #333;
-  color: #e0e0e0;
+  color: inherit; /* follow global text color */
 }
 
 /* Auth Containers */
@@ -108,6 +109,36 @@ main {
   text-align: center;
 }
 
+/* Headings - brighter for readability */
+h1, h2, h3, h4, h5, h6 {
+  color: #ffffff;
+}
+
+/* Ensure hero headings on Home are bright even with inherited styles */
+main .container h1,
+main .container h2 {
+  color: #ffffff !important;
+}
+
+/* Ensure section/card headings are bright */
+main .container h4,
+main .container h5,
+.card .card-title,
+.card h4,
+.card h5 {
+  color: #ffffff !important;
+}
+
+/* Make general text brighter for readability on dark bg */
+p, li, small {
+  color: #e8eaf6;
+}
+
+/* Bootstrap-like lead paragraph on home */
+.lead {
+  color: #f2f4f8;
+}
+
 /* Forms */
 .form-group {
   margin-bottom: 1.5rem;
@@ -118,8 +149,46 @@ main {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: #90caf9; /* Light blue for labels */
+  color: #e8eaf6; /* lighter label color */
 }
+
+/* Make all form labels brighter across the app (Bootstrap + native) */
+label,
+.form-label,
+.form-check-label {
+  color: #e8eaf6 !important; /* high contrast on dark backgrounds */
+}
+
+/* Bootstrap form controls on dark theme */
+input.form-control,
+textarea.form-control,
+select.form-control,
+.form-control {
+  background-color: #333 !important;
+  color: #f0f0f0 !important;
+  border: 1px solid #444 !important;
+}
+
+input.form-control:focus,
+textarea.form-control:focus,
+select.form-control:focus,
+.form-control:focus {
+  background-color: #3a3a3a !important;
+  color: #ffffff !important;
+  border-color: #4caf50 !important;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3) !important;
+}
+
+/* Placeholder text - make readable */
+input::placeholder,
+textarea::placeholder,
+.form-control::placeholder {
+  color: #cfd8dc !important;
+  opacity: 1; /* ensure color applies */
+}
+
+/* Form helper text */
+.form-text { color: #cfd8dc; }
 
 .form-group input {
   width: 100%;
@@ -249,17 +318,18 @@ main {
   text-align: center;
   padding: 2rem;
   font-size: 1.2rem;
-  color: #666;
+  color: #b0bec5;
 }
 
 /* Secret Page */
 .secret-message {
-  background-color: #e8f5e9;
+  background-color: #1f2a24; /* dark greenish background */
   border-left: 4px solid #4caf50;
   padding: 1.5rem;
   margin: 1.5rem 0;
   border-radius: 4px;
   text-align: center;
+  color: #c8e6c9;
 }
 
 .nav-button {
@@ -281,15 +351,96 @@ main {
 
 /* Links */
 a {
-  color: #3498db;
+  color: #64b5f6; /* brighter link */
   text-decoration: none;
   transition: color 0.3s ease;
 }
 
 a:hover {
-  color: #2980b9;
+  color: #90caf9;
   text-decoration: underline;
 }
+
+/* Dark theme overrides for common components (bootstrap-like classes) */
+.list-group-item {
+  background-color: #2d2d2d;
+  color: #e0e0e0;
+  border: 1px solid #444;
+}
+
+.text-muted {
+  color: #e0e0e0 !important; /* brighter muted text for readability */
+}
+
+.card {
+  background-color: #2d2d2d;
+  color: #e0e0e0;
+  border: 1px solid #444;
+}
+
+.card-body {
+  background-color: #2d2d2d;
+}
+
+/* Ensure card headings and texts are bright */
+.card h3,
+.card p {
+  color: #f0f0f0;
+}
+
+/* Muted text inside cards (e.g., transcription, example translation) */
+.card .text-muted,
+.card .card-text.text-muted {
+  color: #e0e0e0 !important;
+}
+
+/* Reading page: make loading helper text fully bright */
+.reading-area .text-muted,
+.container .text-muted.mb-2 {
+  color: #ffffff !important;
+}
+
+.alert {
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+}
+.alert-danger {
+  background-color: #3a1a1a;
+  color: #ff6b6b;
+  border-color: #ff5252;
+}
+.alert-info {
+  background-color: #1e2a38;
+  color: #bbdefb;
+  border-color: #274862;
+}
+
+/* Buttons - outlined variants on dark bg */
+.btn-outline-primary {
+  color: #90caf9;
+  border-color: #90caf9;
+}
+.btn-outline-primary:hover {
+  background-color: rgba(144, 202, 249, 0.15);
+  color: #e3f2fd;
+  border-color: #90caf9;
+}
+.btn-outline-secondary {
+  color: #b0bec5;
+  border-color: #b0bec5;
+}
+.btn-outline-secondary:hover {
+  background-color: rgba(176, 190, 197, 0.15);
+  color: #eceff1;
+  border-color: #b0bec5;
+}
+
+/* Ensure solid variants match our theme */
+.btn.btn-primary { background-color: #2196f3; color: #fff; border: none; }
+.btn.btn-primary:hover { background-color: #1976d2; }
+.btn.btn-success { background-color: #2e7d32; color: #fff; border: none; }
+.btn.btn-success:hover { background-color: #1b5e20; }
 
 .App {
   text-align: center;
