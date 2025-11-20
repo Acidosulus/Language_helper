@@ -125,7 +125,7 @@ function App() {
       <Router>
         <div className="app">
           <nav className="navbar">
-            <h1>Language Helper</h1>
+            <h1><Link to="/">Language Helper</Link></h1>
             <div className="nav-links">
               {user ? (
                 <>
