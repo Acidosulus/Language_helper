@@ -125,13 +125,20 @@ function App() {
       <Router>
         <div className="app">
           <nav className="navbar">
-            <h1><Link to="/">Language Helper</Link></h1>
+            <div className="nav-left">
+              <h1><Link to="/" className="brand-button">Language Helper</Link></h1>
+              {user && (
+                <div className="nav-actions-left">
+                  <Link to="/phrases" className="nav-link">Phrases</Link>
+                  <Link to="/syllables" className="nav-link">Syllables</Link>
+                  <Link to="/books" className="nav-link">Books</Link>
+                </div>
+              )}
+            </div>
             <div className="nav-links">
               {user ? (
                 <>
                   <span>Welcome, {user.username}!</span>
-                  <Link to="/phrases" className="nav-link">My Phrases</Link>
-                  <Link to="/syllables/learn" className="nav-link">Learn Syllables</Link>
                   <button onClick={logout} className="nav-button">Logout</button>
                 </>
               ) : (
@@ -209,79 +216,7 @@ function App() {
 }
 
 function Home() {
-  const { user } = useAuth();
-  return (
-    <div className="container mt-5">
-      <h1 className="text-center mb-4">Welcome to Language Helper</h1>
-      
-      {user ? (
-        <div className="text-center">
-          <p className="lead">Welcome back, {user.username}!</p>
-          <div className="d-flex justify-content-center gap-3 flex-wrap">
-            <Link to="/phrases" className="btn btn-primary btn-lg">
-              View My Phrases
-            </Link>
-            <Link to="/syllables" className="btn btn-secondary btn-lg">
-              Manage Syllables
-            </Link>
-            <Link to="/books" className="btn btn-success btn-lg">
-              Browse Books
-            </Link>
-            <Link to="/secret" className="btn btn-outline-secondary">
-              My Profile
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <div className="text-center">
-          <p className="lead mb-4">Please login or register to continue.</p>
-          <div className="d-flex justify-content-center gap-3">
-            <Link to="/login" className="btn btn-primary btn-lg">Login</Link>
-            <Link to="/register" className="btn btn-outline-secondary btn-lg">Register</Link>
-          </div>
-        </div>
-      )}
-      
-      <div className="mt-5">
-        <h2 className="text-center mb-4">Features</h2>
-        <div className="row">
-          <div className="col-md-4 mb-4">
-            <div className="card h-100">
-              <div className="card-body text-center">
-                <h3>Phrases</h3>
-                <p>Save and practice your favorite phrases</p>
-                <Link to="/phrases" className="btn btn-outline-primary">
-                  Go to Phrases
-                </Link>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-4 mb-4">
-            <div className="card h-100">
-              <div className="card-body text-center">
-                <h3>Books</h3>
-                <p>Read and learn from books in your target language</p>
-                <Link to="/books" className="btn btn-outline-success">
-                  Browse Books
-                </Link>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-4 mb-4">
-            <div className="card h-100">
-              <div className="card-body text-center">
-                <h3>Syllables</h3>
-                <p>Practice pronunciation with syllable exercises</p>
-                <Link to="/syllables" className="btn btn-outline-secondary">
-                  Manage Syllables
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }
 
 function Login() {
