@@ -285,7 +285,7 @@ def get_book_information(
     request: Request, book_id: int, db: Session = Depends(get_db)
 ):
     if not request.session.get("user"):
-         raise HTTPException(status_code=401, detail="User not authenticated")
+        raise HTTPException(status_code=401, detail="User not authenticated")
 
     book = books.get_book(db, book_id, request.session.get("user"))
 
@@ -322,6 +322,7 @@ def save_book_position(
         new_current_paragraph=data.id_new_paragraph,
         user_name=request.session.get("user"),
     )
+
 
 if __name__ == "__main__":
     import uvicorn

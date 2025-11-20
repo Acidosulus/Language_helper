@@ -20,6 +20,7 @@ import SyllableDetail from './components/SyllableDetail';
 import SyllableForm from './components/SyllableForm';
 import LearnSyllables from './components/LearnSyllables';
 import BooksList from './components/BooksList';
+import BookReader from './components/BookReader';
 
 // Create auth context
 export const AuthContext = createContext();
@@ -194,6 +195,10 @@ function App() {
               <Route
                 path="/books"
                 element={user ? <BooksList /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/books/:id_book/read"
+                element={user ? <BookReader /> : <Navigate to="/login" />}
               />
             </Routes>
           </main>

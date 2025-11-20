@@ -87,7 +87,7 @@ class BookWithStatsDTO(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class BookPositionIn(BaseModel):
     id_book: int
     id_new_paragraph: int
-

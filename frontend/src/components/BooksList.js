@@ -74,12 +74,20 @@ function BooksList() {
                   </small>
                 </div>
               </div>
-              <Link 
-                to={`/books/${book.id_book}`} 
-                className="btn btn-sm btn-outline-primary"
-              >
-                View Details
-              </Link>
+              <div className="d-flex gap-2">
+                <Link 
+                  to={`/books/${book.id_book}`} 
+                  className="btn btn-sm btn-outline-secondary"
+                >
+                  View Details
+                </Link>
+                <Link 
+                  to={`/books/${book.id_book}/read`} 
+                  className="btn btn-sm btn-success"
+                >
+                  Читать
+                </Link>
+              </div>
             </div>
           </div>
         ))}
