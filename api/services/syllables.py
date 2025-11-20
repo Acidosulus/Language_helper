@@ -141,7 +141,9 @@ def set_syllable_as_viewed(db: Session, sillable_id: int, username: str):
     db.flush()
 
 
-def get_next_syllable(db: Session, current_syllable_id: int, username: str) -> Optional[dto.Syllable]:
+def get_next_syllable(
+    db: Session, current_syllable_id: int, username: str
+) -> Optional[dto.Syllable]:
     if current_syllable_id:
         set_syllable_as_viewed(db, current_syllable_id, username)
 
@@ -154,9 +156,9 @@ def get_next_syllable(db: Session, current_syllable_id: int, username: str) -> O
         .order_by(models.Syllable.last_view)
         .first()
     )
-    
+
     if not syllable:
         return None
-        
+
     # Конвертируем SQLAlchemy модель в Pydantic модель
     return dto.Syllable.model_validate(syllable, from_attributes=True)

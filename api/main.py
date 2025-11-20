@@ -271,13 +271,58 @@ def get_next_syllable(
     username = request.session.get("user")
     if not username:
         raise HTTPException(status_code=401, detail="Not authenticated")
-        
+
     return syllables.get_next_syllable(db, current_syllable_id, username)
 
 
 @app.get("/api/books", response_model=list[dto.BookWithStatsDTO])
 def get_books(request: Request, db: Session = Depends(get_db)):
     return books.get_user_books_with_stats(db, request.session.get("user"))
+
+
+@app.get("/api/book", response_model=dto.BookWithStatsDTO)
+def get_book_information(
+    request: Request, book_id: int, db: Session = Depends(get_db)
+):
+    if not request.session.get("user"):
+         raise HTTPException(status_code=401, detail="User not authenticated")
+
+    book = books.get_book(db, book_id, request.session.get("user"))
+
+    if book is None:
+        raise HTTPException(status_code=404, detail="Book not found.")
+
+    return book
+
+
+@app.get("/api/book/paragraph", response_model=list[dto.SentenceDTO])
+def get_book_paragraph(
+    request: Request,
+    id_book: int,
+    id_paragraph: int,
+    db: Session = Depends(get_db),
+):
+    return books.get_paragraph(
+        db,
+        id_book=id_book,
+        id_paragraph=id_paragraph,
+        user_name=request.session.get("user"),
+    )
+
+
+@app.post("/api/book/paragraph")
+def save_book_position(
+    request: Request,
+    id_book: int,
+    id_new_paragraph: int,
+    db: Session = Depends(get_db_autocommit),
+):
+    books.save_book_position(
+        db,
+        id_book=id_book,
+        new_current_paragraph=id_new_paragraph,
+        user_name=request.session.get("user"),
+    )
 
 
 if __name__ == "__main__":

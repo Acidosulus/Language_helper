@@ -78,6 +78,7 @@ class BookWithStatsDTO(BaseModel):
     id_book: int
     book_name: str
     dt: Optional[datetime] = None
+    current_paragraph: Optional[int] = None
     user_id: int
 
     # Поля из label(...)
@@ -85,4 +86,3 @@ class BookWithStatsDTO(BaseModel):
     Max_Paragraph_Number: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
-

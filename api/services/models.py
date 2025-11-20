@@ -1,18 +1,16 @@
 from sqlalchemy import (
-    Column,
     Integer,
     Text,
     String,
     ForeignKey,
     TIMESTAMP,
 )
-from sqlalchemy.orm import relationship, declarative_base, Mapped, mapped_column
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from typing import Optional, List
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Integer, Text, String, TIMESTAMP
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
@@ -61,7 +59,9 @@ class Phrase(Base):
     last_view: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)
     dt: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)
 
-    user: Mapped["User"] = relationship(back_populates="phrases", lazy="selectin")
+    user: Mapped["User"] = relationship(
+        back_populates="phrases", lazy="selectin"
+    )
 
     def __repr__(self):
         return f"<Phrase(id={self.id_phrase}, phrase='{self.phrase}' translation='{self.translation}')>"
@@ -79,7 +79,9 @@ class Syllable(Base):
     ready: Mapped[Optional[int]] = mapped_column(Integer)
     last_view: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)
     syllable_id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.user_id", ondelete="SET NULL"))
+    user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.user_id", ondelete="SET NULL")
+    )
 
     user: Mapped["User"] = relationship(back_populates="syllables")
     paragraphs: Mapped[List["SyllableParagraph"]] = relationship(
@@ -112,17 +114,24 @@ class SyllableParagraph(Base):
     def __repr__(self):
         return f"<SyllableParagraph(id={self.paragraph_id}, syllable_id={self.syllable_id}, sequence={self.sequence})>"
 
+
 class Book(Base):
     __tablename__ = "books"
 
     id_book: Mapped[int] = mapped_column(primary_key=True)
     book_name: Mapped[str] = mapped_column(Text, nullable=False)
-    current_paragraph: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), nullable=False)
+    current_paragraph: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.user_id"), nullable=False
+    )
     dt: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="books")
-    sentences: Mapped[List["Sentence"]] = relationship(back_populates="book", cascade="all, delete-orphan")
+    sentences: Mapped[List["Sentence"]] = relationship(
+        back_populates="book", cascade="all, delete-orphan"
+    )
 
 
 class Sentence(Base):
@@ -130,7 +139,9 @@ class Sentence(Base):
 
     id_sentence: Mapped[int] = mapped_column(primary_key=True)
     sentence: Mapped[str] = mapped_column(Text, nullable=False)
-    id_book: Mapped[int] = mapped_column(ForeignKey("books.id_book"), nullable=False)
+    id_book: Mapped[int] = mapped_column(
+        ForeignKey("books.id_book"), nullable=False
+    )
     id_paragraph: Mapped[int] = mapped_column(Integer, nullable=False)
 
     book: Mapped["Book"] = relationship(back_populates="sentences")
