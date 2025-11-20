@@ -86,3 +86,8 @@ class BookWithStatsDTO(BaseModel):
     Max_Paragraph_Number: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class BookPositionIn(BaseModel):
+    id_book: int
+    id_new_paragraph: int
+

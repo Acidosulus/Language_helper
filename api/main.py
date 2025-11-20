@@ -313,17 +313,15 @@ def get_book_paragraph(
 @app.post("/api/book/paragraph")
 def save_book_position(
     request: Request,
-    id_book: int,
-    id_new_paragraph: int,
+    data: dto.BookPositionIn,
     db: Session = Depends(get_db_autocommit),
 ):
     books.save_book_position(
         db,
-        id_book=id_book,
-        new_current_paragraph=id_new_paragraph,
+        id_book=data.id_book,
+        new_current_paragraph=data.id_new_paragraph,
         user_name=request.session.get("user"),
     )
-
 
 if __name__ == "__main__":
     import uvicorn
