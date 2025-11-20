@@ -13,9 +13,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "*",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -208,7 +206,9 @@ def set_phrase_status(
 
 @app.get("/api/phrase/next", response_model=dto.Phrase)
 def get_next_phrase(
-    request: Request, current_phrase_id: int, db: Session = Depends(get_db)
+    request: Request,
+    current_phrase_id: int,
+    db: Session = Depends(get_db_autocommit),
 ):
     if request.session.get("user"):
         return phrases.get_next_phrase(
