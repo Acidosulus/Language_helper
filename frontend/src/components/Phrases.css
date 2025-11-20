@@ -66,6 +66,7 @@
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   padding: 25px;
+  color: #e0e0e0; /* ensure default text inside card is readable */
 }
 
 .phrase-original,
@@ -179,9 +180,15 @@
   border-left: 3px solid #4a90e2;
 }
 
+.paragraphs h4 {
+  color: #ffffff; /* brighten section header: "Примеры использования:" */
+  margin-bottom: 12px;
+}
+
 .example {
   font-size: 16px;
   margin-bottom: 5px;
+  color: #f5f5f5; /* high-contrast example text */
 }
 
 .example-translation {

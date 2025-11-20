@@ -66,10 +66,15 @@ function SyllablesList() {
   return (
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Syllables</h2>
-        <Link to="/syllables/new" className="btn btn-primary">
-          Add New Syllable
-        </Link>
+        <h2></h2>
+        <div className="d-flex gap-2">
+          <Link to="/syllables/learn" className="btn btn-success">
+            Learn Words
+          </Link>
+          <Link to="/syllables/new" className="btn btn-primary">
+            Add New Word
+          </Link>
+        </div>
       </div>
 
       <div className="table-responsive">

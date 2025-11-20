@@ -138,6 +138,123 @@ main {
   color: inherit; /* follow global text color */
 }
 
+/* Lists (Bootstrap .list-group) - dark theme fix for readability */
+.list-group {
+  background: transparent;
+}
+
+.list-group-item {
+  background-color: #2a2a2a !important; /* light gray on dark */
+  color: #e0e0e0 !important; /* readable text */
+  border: 1px solid #444 !important;
+}
+
+.list-group-item h5,
+.list-group-item .mb-1 {
+  color: #ffffff; /* brighter titles */
+}
+
+.list-group-item .text-muted,
+.list-group-item small.text-muted {
+  color: #b0bec5 !important; /* soft muted on dark */
+}
+
+/* Outline secondary button on dark bg */
+.btn-outline-secondary {
+  color: #cfd8dc !important;
+  border-color: #90a4ae !important;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #37474f !important;
+  color: #ffffff !important;
+  border-color: #90a4ae !important;
+}
+
+/* Tables (Bootstrap .table) - dark theme adjustments for readability */
+.table {
+  background-color: #2d2d2d; /* dark card-like bg */
+  color: #e0e0e0; /* readable text */
+  /* Set Bootstrap table CSS variables for consistent dark theme */
+  --bs-table-bg: #2d2d2d;
+  --bs-table-color: #e0e0e0;
+  --bs-table-border-color: #444444;
+  --bs-table-striped-bg: #262626;
+  --bs-table-striped-color: #e0e0e0;
+  --bs-table-hover-bg: #2a2a2a;
+  --bs-table-hover-color: #ffffff;
+}
+
+.table-responsive {
+  background-color: transparent; /* avoid white wrapper */
+}
+
+.table > :not(caption) > * > * {
+  background-color: #2d2d2d; /* ensure all cells default to dark gray */
+  color: #e0e0e0;
+  border-color: #444444;
+}
+
+.table thead th {
+  background-color: #333333; /* darker header */
+  color: #e0e0e0;
+  border-color: #444444;
+}
+
+.table tbody td {
+  border-color: #444444;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  --bs-table-accent-bg: #262626; /* for Bootstrap 5 var */
+  background-color: #262626; /* fallback */
+  color: #e0e0e0;
+}
+
+/* Ensure even rows are not white */
+.table-striped > tbody > tr:nth-of-type(even) > * {
+  background-color: #2d2d2d !important;
+  color: #e0e0e0 !important;
+}
+
+.table tbody tr:hover > * {
+  background-color: #2a2a2a;
+  color: #ffffff;
+}
+
+/* Cards - ensure no bright (white) backgrounds */
+.card {
+  background-color: #2d2d2d !important;
+  color: #e0e0e0 !important;
+  border: 1px solid #444 !important;
+}
+
+.card-header,
+.card-footer {
+  background-color: #2b2b2b !important;
+  color: #e0e0e0 !important;
+  border-color: #444 !important;
+}
+
+/* Pagination - avoid white page items */
+.pagination .page-link {
+  background-color: #2a2a2a !important;
+  color: #e0e0e0 !important;
+  border: 1px solid #444 !important;
+}
+
+.page-item.active .page-link {
+  background-color: #3a3a3a !important; /* slightly lighter active */
+  border-color: #555 !important;
+  color: #ffffff !important;
+}
+
+.page-item.disabled .page-link {
+  background-color: #242424 !important;
+  color: #777 !important;
+  border-color: #333 !important;
+}
+
 /* Auth Containers */
 .auth-container {
   max-width: 400px;

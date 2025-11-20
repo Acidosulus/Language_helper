@@ -166,7 +166,7 @@ function SyllableForm() {
 
   return (
     <div className="container mt-4">
-      <h2>{id ? 'Edit Syllable' : 'Add New Syllable'}</h2>
+      <h2>{id ? 'Edit Word' : 'Add New Word'}</h2>
       
       {error && (
         <div className="alert alert-danger" role="alert">

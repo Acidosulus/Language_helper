@@ -86,7 +86,6 @@ function PhrasesList() {
   return (
     <div className="phrases-container">
       <div className="phrases-header">
-        <h2>My Phrases</h2>
         <Link to="/phrases/learn" className="learn-button">
           Learn Phrases
         </Link>

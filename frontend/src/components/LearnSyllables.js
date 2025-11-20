@@ -20,14 +20,14 @@ function LearnSyllables() {
       });
       
       if (!response.ok) {
-        throw new Error('Ошибка при загрузке слога');
+        throw new Error('Ошибка при загрузке слова');
       }
       
       const data = await response.json();
       
       if (!data) {
         setCurrentSyllable(null);
-        setError('Все слоги изучены!');
+        setError('Все слова изучены!');
       } else {
         setCurrentSyllable(data);
         setError('');
@@ -55,12 +55,12 @@ function LearnSyllables() {
   };
 
   if (!user) {
-    return <div className="container">Пожалуйста, войдите в систему, чтобы изучать слоги</div>;
+    return <div className="container">Пожалуйста, войдите в систему, чтобы изучать слова</div>;
   }
 
   return (
     <div className="learn-container">
-      <h2>Изучение слогов</h2>
+      <h2></h2>
       
       {error && <div className="error">{error}</div>}
       
@@ -108,12 +108,12 @@ function LearnSyllables() {
             className="next-button"
             disabled={loading}
           >
-            {loading ? 'Загрузка...' : 'Следующий слог'}
+            {loading ? 'Loading...' : 'Next Word'}
           </button>
         </div>
       ) : (
         <div className="no-syllables">
-          <p>Нет доступных слогов для изучения</p>
+          <p>Нет доступных слов для изучения</p>
         </div>
       )}
     </div>

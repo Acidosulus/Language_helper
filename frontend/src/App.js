@@ -130,7 +130,7 @@ function App() {
               {user && (
                 <div className="nav-actions-left">
                   <Link to="/phrases" className="nav-link">Phrases</Link>
-                  <Link to="/syllables" className="nav-link">Syllables</Link>
+                  <Link to="/syllables" className="nav-link">Words</Link>
                   <Link to="/books" className="nav-link">Books</Link>
                 </div>
               )}
