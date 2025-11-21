@@ -49,6 +49,7 @@ def set_phrase_as_viewed(db: Session, id_phrase: int, username: str):
     )
     phrase.last_view = datetime.utcnow()
     phrase.show_count += 1
+
     db.flush()
 
 

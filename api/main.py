@@ -150,7 +150,7 @@ def secret(user: models.User = Depends(get_current_user)):
     return {"message": f"Секретная страница, {user.name}!"}
 
 
-# --- Доп. эндпоинт для проверки сессии ---
+# --- Доп.эндпоинт для проверки сессии ---
 @app.get("/api/me")
 def me(request: Request, db: Session = Depends(get_db)):
     username = request.session.get("user")
@@ -273,6 +273,36 @@ def get_next_syllable(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     return syllables.get_next_syllable(db, current_syllable_id, username)
+
+
+@app.get("/api/syllables/search", response_model=list[dto.Syllable])
+def get_syllables_by_word_part_endpoint(
+    request: Request,
+    ready: Literal["0", "1"] = "0",
+    word_part: str = "",
+    offset: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
+    """Возвращает список слогов по подстроке слова и признаку готовности.
+
+    Параметры:
+    - ready: "0" или "1" — фильтр выученности
+    - word_part: подстрока для поиска в поле word
+    - offset, limit: пагинация
+    """
+    username = request.session.get("user")
+    if not username:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+
+    return syllables.get_syllables_by_word_part(
+        db=db,
+        user_name=username,
+        ready=int(ready),
+        word_part=word_part,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @app.get("/api/books", response_model=list[dto.BookWithStatsDTO])

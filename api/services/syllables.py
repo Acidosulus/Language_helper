@@ -162,3 +162,24 @@ def get_next_syllable(
 
     # Конвертируем SQLAlchemy модель в Pydantic модель
     return dto.Syllable.model_validate(syllable, from_attributes=True)
+
+
+def get_syllables_by_word_part(
+    db: Session,
+    user_name: str,
+    ready: int,
+    word_part: str='',
+    offset: int = 0,
+    limit: int = 100,
+):
+    return (
+        db.query(models.Syllable)
+        .filter(models.Syllable.ready == ready)
+        .filter(models.User.name == user_name)
+        .filter(models.Syllable.word.contains(word_part))
+        .order_by(models.Syllable.word)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
