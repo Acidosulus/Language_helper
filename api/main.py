@@ -1,6 +1,7 @@
 from typing import Literal, Optional
 
 from fastapi import FastAPI, Request, Form, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from passlib.context import CryptContext
@@ -8,6 +9,9 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
 from services import syllables, books, phrases, models, dto
+from pydantic import BaseModel
+from io import BytesIO
+import gtts
 
 app = FastAPI()
 
@@ -346,6 +350,29 @@ def save_book_position(
         new_current_paragraph=data.id_new_paragraph,
         user_name=request.session.get("user"),
     )
+
+
+class TTSIn(BaseModel):
+    text: str
+    lang: Optional[str] = "en"
+
+
+@app.post("/api/text_to_speech")
+def text_to_speech(request: Request, payload: TTSIn):
+    """Генерация озвучки текста. Возвращает mp3-аудио."""
+    if not request.session.get("user"):
+        raise HTTPException(status_code=401, detail="User not authenticated")
+    text = (payload.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is empty")
+    try:
+        tts = gtts.gTTS(text=text, lang=payload.lang or "en")
+        buf = BytesIO()
+        tts.write_to_fp(buf)
+        buf.seek(0)
+        return StreamingResponse(buf, media_type="audio/mpeg")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"TTS error: {e}")
 
 
 if __name__ == "__main__":

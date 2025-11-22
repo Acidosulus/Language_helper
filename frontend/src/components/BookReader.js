@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 
 function BookReader() {
@@ -10,6 +10,14 @@ function BookReader() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  
+  // Audio player state
+  const audioRef = useRef(null);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [playerVisible, setPlayerVisible] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [ttsLoading, setTtsLoading] = useState(false);
 
   // Selects the text content of the clicked sentence span
   const handleSentenceClick = (e) => {
@@ -24,6 +32,105 @@ function BookReader() {
     } catch (err) {
       // no-op if selection API not available
       // console.warn('Selection failed', err);
+    }
+  };
+
+  const cleanupAudioUrl = () => {
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+    }
+    setAudioUrl(null);
+  };
+
+  const stopAudio = () => {
+    try {
+      const el = audioRef.current;
+      if (el) {
+        el.pause();
+        el.currentTime = 0;
+      }
+    } catch (e) {
+      // ignore
+    }
+    setIsPlaying(false);
+    setIsPaused(false);
+    setPlayerVisible(false);
+    cleanupAudioUrl();
+  };
+
+  const pauseAudio = () => {
+    try {
+      const el = audioRef.current;
+      if (el) {
+        el.pause();
+        setIsPaused(true);
+        setIsPlaying(false);
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const resumeAudio = async () => {
+    try {
+      const el = audioRef.current;
+      if (el) {
+        await el.play();
+        setIsPaused(false);
+        setIsPlaying(true);
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const playSentenceTTS = async (text) => {
+    if (!text) return;
+    setTtsLoading(true);
+    setPlayerVisible(true);
+    setIsPlaying(false);
+    setIsPaused(false);
+    try {
+      // Request TTS from backend
+      const res = await fetch(`${apiUrl}/text_to_speech`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          accept: 'audio/mpeg',
+        },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`TTS failed: ${res.status} ${t}`);
+      }
+      const blob = await res.blob();
+      // Ensure it's mp3
+      const playable = blob.type ? blob : new Blob([blob], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(playable);
+      cleanupAudioUrl();
+      setAudioUrl(url);
+      const el = audioRef.current;
+      if (el) {
+        el.src = url;
+        // Attach end handler
+        el.onended = () => {
+          setIsPlaying(false);
+          setIsPaused(false);
+          setPlayerVisible(false);
+          cleanupAudioUrl();
+        };
+        await el.play();
+        setIsPlaying(true);
+        setIsPaused(false);
+      }
+    } catch (e) {
+      console.error(e);
+      setPlayerVisible(false);
+      alert('Не удалось выполнить озвучку предложения.');
+    } finally {
+      setTtsLoading(false);
     }
   };
 
@@ -184,6 +291,16 @@ function BookReader() {
                     >
                       {s.sentence}
                     </span>
+                    <button
+                      type="button"
+                      className="btn btn-link btn-sm p-0 ms-1 align-baseline"
+                      title="Озвучить предложение"
+                      onClick={() => playSentenceTTS(s.sentence)}
+                      disabled={ttsLoading}
+                      style={{ verticalAlign: 'baseline', textDecoration: 'none' }}
+                    >
+                      {ttsLoading ? '…' : '🔊'}
+                    </button>
                     {idx !== p.sentences.length - 1 && ' '}
                   </React.Fragment>
                 ))}
@@ -204,6 +321,28 @@ function BookReader() {
           Вперед на 5 ▶
         </button>
       </div>
+      {/* Hidden audio element */}
+      <audio ref={audioRef} style={{ display: 'none' }} />
+
+      {/* Bottom floating control panel */}
+      {playerVisible && (
+        <div
+          className="shadow bg-light border-top"
+          style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 1050 }}
+        >
+          <div className="container py-2 d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center gap-2">
+              <strong className="me-2">Воспроизведение</strong>
+              {ttsLoading && <span className="text-muted">Загрузка аудио…</span>}
+            </div>
+            <div className="btn-group">
+              <button className="btn btn-outline-danger btn-sm" onClick={stopAudio}>Стоп</button>
+              <button className="btn btn-outline-secondary btn-sm" onClick={pauseAudio} disabled={!isPlaying}>Пауза</button>
+              <button className="btn btn-outline-primary btn-sm" onClick={resumeAudio} disabled={!isPaused}>Продолжить</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
