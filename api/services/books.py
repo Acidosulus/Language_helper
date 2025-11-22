@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import desc, select, func, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only, noload
 from services import models, users
 
 
@@ -97,3 +97,13 @@ def save_book_position(
 def get_book(db: Session, id_book: int, user_name: str):
     books = get_user_books_with_stats(db, user_name)
     return next(filter(lambda x: x.id_book == id_book, books), None)
+
+
+def last_opened_book(db: Session, user_name: str):
+    return (
+        db.query(models.Book)
+        .options(noload("*"))
+        .filter(models.Book.user_id == users.get_user_id(db, user_name))
+        .order_by(desc(models.Book.dt))
+        .first()
+    )

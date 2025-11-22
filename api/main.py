@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from passlib.context import CryptContext
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
 from services import syllables, books, phrases, models, dto
@@ -237,26 +237,12 @@ def get_syllable(
     return syllables.get_syllable(db, syllable_id, request.session.get("user"))
 
 
-@app.get("/api/syllables", response_model=list[dto.Syllable])
-def all_syllables(
-    request: Request, limit=100, offset=0, db: Session = Depends(get_db)
-):
-    result = syllables.get_syllables(
-        db, limit=limit, offset=offset, username=request.session.get("user")
-    )
-    return result
-
-
 @app.post("/api/syllable", response_model=dto.Syllable)
 def save_syllable(
     request: Request,
     syllable_dto: dto.Syllable,
     db: Session = Depends(get_db_autocommit),
 ):
-    from rich import print
-
-    print(syllable_dto)
-
     return syllables.save_syllable(
         db, syllable_dto, request.session.get("user")
     )
@@ -323,6 +309,14 @@ def get_book_information(
         raise HTTPException(status_code=404, detail="Book not found.")
 
     return book
+
+
+@app.get("/api/book/last", response_model=dto.BookDTO)
+def get_last_opened_book(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("user"):
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    return books.last_opened_book(db, request.session.get("user"))
 
 
 @app.get("/api/book/paragraph", response_model=list[dto.SentenceDTO])

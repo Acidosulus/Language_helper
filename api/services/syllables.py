@@ -17,21 +17,6 @@ def get_syllable(db: Session, syllable_id: int, username: str):
     )
 
 
-def get_syllables(
-    db: Session,
-    username: str,
-    offset: int = 0,
-    limit: int = 100,
-) -> list[models.Syllable]:
-    query = (
-        db.query(models.Syllable)
-        .join(models.User)
-        .filter(models.User.user_id == users.get_user_id(db, username))
-        .options(selectinload(models.Syllable.paragraphs))
-    )
-    return query.offset(offset).limit(limit).all()
-
-
 def save_syllable(
     db: Session, syllable: models.Syllable, username: str
 ) -> models.Syllable:
@@ -172,11 +157,18 @@ def get_syllables_by_word_part(
     offset: int = 0,
     limit: int = 100,
 ):
-    return (
+    query = (
         db.query(models.Syllable)
+        .join(models.User)
         .filter(models.Syllable.ready == ready)
         .filter(models.User.name == user_name)
-        .filter(models.Syllable.word.contains(word_part))
+    )
+
+    if word_part:
+        query = query.filter(models.Syllable.word.contains(word_part))
+
+    return (
+        query
         .order_by(models.Syllable.word)
         .offset(offset)
         .limit(limit)
