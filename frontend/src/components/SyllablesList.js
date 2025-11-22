@@ -11,6 +11,8 @@ function SyllablesList() {
   const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
   const { user } = useAuth();
+  const [wordPart, setWordPart] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -18,15 +20,27 @@ function SyllablesList() {
     }
   }, [page, user]);
 
-  const fetchSyllables = async () => {
+  // Update list when input text changes (debounced)
+  useEffect(() => {
+    if (!user) return;
+    const t = setTimeout(() => {
+      setPage(1); // reset to first page on new search
+      fetchSyllables(1);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [wordPart, user]);
+
+  const fetchSyllables = async (forcedPage) => {
     try {
-      const offset = (page - 1) * limit;
-      const response = await fetch(
-        `${apiUrl}/syllables?limit=${limit}&offset=${offset}`,
-        {
-          credentials: 'include',
-        }
-      );
+      const currentPage = forcedPage || page;
+      const offset = (currentPage - 1) * limit;
+      const url = `${apiUrl}/syllables/search?ready=0&word_part=${encodeURIComponent(
+        wordPart
+      )}&limit=${limit}&offset=${offset}`;
+      setIsSearching(true);
+      const response = await fetch(url, {
+        credentials: 'include',
+      });
       const data = await response.json();
       console.log('API Response:', data);
       console.log('Type of data:', typeof data);
@@ -42,7 +56,19 @@ function SyllablesList() {
       console.error('Error fetching syllables:', error);
     } finally {
       setLoading(false);
+      setIsSearching(false);
     }
+  };
+
+  const onSearchClick = () => {
+    setPage(1);
+    fetchSyllables(1);
+  };
+
+  const onClearClick = () => {
+    setWordPart('');
+    setPage(1);
+    fetchSyllables(1);
   };
 
   const handleDelete = async (id) => {
@@ -66,7 +92,22 @@ function SyllablesList() {
   return (
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2></h2>
+        <div className="d-flex align-items-center gap-2" style={{ flex: 1 }}>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Введите часть слова..."
+            value={wordPart}
+            onChange={(e) => setWordPart(e.target.value)}
+            style={{ maxWidth: 320 }}
+          />
+          <button className="btn btn-primary" onClick={onSearchClick} disabled={isSearching}>
+            Искать
+          </button>
+          <button className="btn btn-secondary" onClick={onClearClick} disabled={isSearching && wordPart === ''}>
+            Очистить
+          </button>
+        </div>
         <div className="d-flex gap-2">
           <Link to="/syllables/learn" className="btn btn-success">
             Learn Words
