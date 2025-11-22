@@ -11,6 +11,22 @@ function BookReader() {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
+  // Selects the text content of the clicked sentence span
+  const handleSentenceClick = (e) => {
+    try {
+      const node = e.currentTarget;
+      const selection = window.getSelection && window.getSelection();
+      if (!node || !selection) return;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } catch (err) {
+      // no-op if selection API not available
+      // console.warn('Selection failed', err);
+    }
+  };
+
   // Fetch meta including current position
   useEffect(() => {
     const fetchMeta = async () => {
@@ -162,7 +178,10 @@ function BookReader() {
               <p style={{ whiteSpace: 'pre-wrap', textAlign: 'justify', marginBottom: 0 }}>
                 {p.sentences.map((s, idx) => (
                   <React.Fragment key={idx}>
-                    <span style={{ color: idx % 2 === 0 ? 'lightgreen' : 'lightblue' }}>
+                    <span
+                      onClick={handleSentenceClick}
+                      style={{ color: idx % 2 === 0 ? 'lightgreen' : 'lightblue', cursor: 'pointer' }}
+                    >
                       {s.sentence}
                     </span>
                     {idx !== p.sentences.length - 1 && ' '}
