@@ -332,13 +332,13 @@ function BookReader() {
         >
           <div className="container py-2 d-flex align-items-center justify-content-between">
             <div className="d-flex align-items-center gap-2">
-              <strong className="me-2">Воспроизведение</strong>
-              {ttsLoading && <span className="text-muted">Загрузка аудио…</span>}
+              <strong className="me-2" style={{ color: '#adb5bd' }}>Воспроизведение</strong>
+              {ttsLoading && <span className="text-muted" style={{ color: '#ced4da' }}>Загрузка аудио…</span>}
             </div>
             <div className="btn-group">
-              <button className="btn btn-outline-danger btn-sm" onClick={stopAudio}>Стоп</button>
-              <button className="btn btn-outline-secondary btn-sm" onClick={pauseAudio} disabled={!isPlaying}>Пауза</button>
-              <button className="btn btn-outline-primary btn-sm" onClick={resumeAudio} disabled={!isPaused}>Продолжить</button>
+              <button className="btn btn-outline-danger btn-sm" onClick={stopAudio} title="Стоп" aria-label="Стоп">⏹️</button>
+              <button className="btn btn-outline-secondary btn-sm" onClick={pauseAudio} disabled={!isPlaying} title="Пауза" aria-label="Пауза">⏸️</button>
+              <button className="btn btn-outline-primary btn-sm" onClick={resumeAudio} disabled={!isPaused} title="Продолжить" aria-label="Продолжить">▶️</button>
             </div>
           </div>
         </div>

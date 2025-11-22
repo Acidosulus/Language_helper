@@ -359,12 +359,15 @@ class TTSIn(BaseModel):
 
 @app.post("/api/text_to_speech")
 def text_to_speech(request: Request, payload: TTSIn):
-    """Генерация озвучки текста. Возвращает mp3-аудио."""
+
     if not request.session.get("user"):
         raise HTTPException(status_code=401, detail="User not authenticated")
+
     text = (payload.text or "").strip()
+
     if not text:
         raise HTTPException(status_code=400, detail="Text is empty")
+
     try:
         tts = gtts.gTTS(text=text, lang=payload.lang or "en")
         buf = BytesIO()
