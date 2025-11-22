@@ -160,7 +160,14 @@ function BookReader() {
           <div key={p.id_paragraph} className="card mb-3">
             <div className="card-body">
               <p style={{ whiteSpace: 'pre-wrap', textAlign: 'justify', marginBottom: 0 }}>
-                {p.sentences.map((s) => s.sentence).join(' ')}
+                {p.sentences.map((s, idx) => (
+                  <React.Fragment key={idx}>
+                    <span style={{ color: idx % 2 === 0 ? 'lightgreen' : 'lightblue' }}>
+                      {s.sentence}
+                    </span>
+                    {idx !== p.sentences.length - 1 && ' '}
+                  </React.Fragment>
+                ))}
               </p>
             </div>
           </div>
