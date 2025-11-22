@@ -159,8 +159,7 @@ function BookReader() {
         {paragraphs.map((p) => (
           <div key={p.id_paragraph} className="card mb-3">
             <div className="card-body">
-              <div className="mb-2 text-muted">Параграф #{p.id_paragraph}</div>
-              <p style={{ whiteSpace: 'pre-wrap', marginBottom: 0 }}>
+              <p style={{ whiteSpace: 'pre-wrap', textAlign: 'justify', marginBottom: 0 }}>
                 {p.sentences.map((s) => s.sentence).join(' ')}
               </p>
             </div>
