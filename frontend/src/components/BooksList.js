@@ -6,6 +6,7 @@ function BooksList() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lastBook, setLastBook] = useState(null);
   const apiUrl = process.env.REACT_APP_API_URL;
   const { user } = useAuth();
 
@@ -33,6 +34,31 @@ function BooksList() {
     fetchBooks();
   }, [apiUrl]);
 
+  useEffect(() => {
+    const fetchLastBook = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/book/last`, {
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          // Silently ignore if no last book or unauthorized
+          return;
+        }
+
+        const data = await response.json();
+        setLastBook(data);
+      } catch (err) {
+        // Do not block the page if last book cannot be fetched
+        console.warn('Unable to fetch last opened book:', err);
+      }
+    };
+
+    if (user) {
+      fetchLastBook();
+    }
+  }, [apiUrl, user]);
+
   if (loading) {
     return (
       <div className="container mt-5 text-center">
@@ -53,6 +79,14 @@ function BooksList() {
       <h2>Books</h2>
       {user && (
         <div className="mb-3">
+          {lastBook && (
+            <Link
+              to={`/books/${lastBook.id_book}/read`}
+              className="btn btn-success me-2"
+            >
+              {`Read: ${lastBook.book_name}`}
+            </Link>
+          )}
           <Link to="/books/add" className="btn btn-primary">
             Add New Book
           </Link>
