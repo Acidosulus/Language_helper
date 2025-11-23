@@ -266,10 +266,10 @@ function BookReader() {
 
       <div className="d-flex gap-2 mb-3">
         <button className="btn btn-outline-primary" onClick={goPrev} disabled={atStart || loading}>
-          ◀ Назад на 5
+          ◀ 5
         </button>
         <button className="btn btn-outline-primary" onClick={goNext} disabled={atEnd || loading}>
-          Вперед на 5 ▶
+          5 ▶
         </button>
         {saving && <span className="text-muted ms-2">Saving position...</span>}
       </div>
@@ -315,10 +315,10 @@ function BookReader() {
 
       <div className="d-flex gap-2 mt-3">
         <button className="btn btn-outline-primary" onClick={goPrev} disabled={atStart || loading}>
-          ◀ Назад на 5
+          ◀ 5
         </button>
         <button className="btn btn-outline-primary" onClick={goNext} disabled={atEnd || loading}>
-          Вперед на 5 ▶
+          5 ▶
         </button>
       </div>
       {/* Hidden audio element */}
@@ -343,6 +343,9 @@ function BookReader() {
           </div>
         </div>
       )}
+
+      {/* Bottom spacer to allow extra scroll and space for context menus */}
+      <div aria-hidden="true" style={{ height: '100vh' }} />
     </div>
   );
 }

@@ -35,7 +35,8 @@ app.add_middleware(
 pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 DATABASE_URL = (
-    "postgresql+psycopg2://postgres:321@192.168.0.112/language_helper"
+    "postgresql+psycopg2://postgres:321@192.168.0.112/language"
+    # "postgresql+psycopg2://postgres:321@192.168.0.112/language_helper"
 )
 engine = create_engine(
     DATABASE_URL,
