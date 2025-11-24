@@ -248,12 +248,23 @@ function BookReader() {
     const newStart = Math.max(bookMeta.Min_Paragraph_Number, startParagraph - 5);
     setStartParagraph(newStart);
     savePosition(newStart);
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      if (typeof window !== 'undefined' && window.scrollTo) window.scrollTo(0, 0);
+    }
   };
   const goNext = async () => {
     if (!bookMeta || startParagraph == null) return;
     const newStart = Math.min(bookMeta.Max_Paragraph_Number, startParagraph + 5);
     setStartParagraph(newStart);
     savePosition(newStart);
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      // Fallback in non-browser environments
+      if (typeof window !== 'undefined' && window.scrollTo) window.scrollTo(0, 0);
+    }
   };
 
   if (loading && !bookMeta) {
