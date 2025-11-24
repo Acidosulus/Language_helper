@@ -7,6 +7,7 @@ function LearnPhrases() {
   const [currentPhrase, setCurrentPhrase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [repeatedToday, setRepeatedToday] = useState(null); // { count }
   const { user } = useAuth();
   const navigate = useNavigate();
   const apiUrl = process.env.REACT_APP_API_URL;
@@ -18,6 +19,17 @@ function LearnPhrases() {
   const [isPaused, setIsPaused] = useState(false);
   const [ttsLoading, setTtsLoading] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
+
+  const fetchRepeatedToday = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/phrase/repeated_today`, { credentials: 'include' });
+      if (!res.ok) return; // silently ignore; not critical for learning flow
+      const data = await res.json(); // { count: number }
+      setRepeatedToday(data);
+    } catch (e) {
+      // ignore
+    }
+  };
 
   const fetchNextPhrase = async (currentId = 0) => {
     try {
@@ -33,6 +45,8 @@ function LearnPhrases() {
       const data = await response.json();
       setCurrentPhrase(data);
       setError('');
+      // Refresh repeated today counter on successful fetch of a new phrase
+      fetchRepeatedToday();
     } catch (err) {
       setError(err.message);
       if (err.message.includes('401')) {
@@ -131,6 +145,7 @@ function LearnPhrases() {
   useEffect(() => {
     if (user) {
       fetchNextPhrase(0);
+      fetchRepeatedToday();
     }
   }, [user]);
 
@@ -150,8 +165,14 @@ function LearnPhrases() {
 
   return (
     <div className="learn-container">
-      <h2>Учить фразы</h2>
-      
+
+      {/* Centered counter similar to BookReader progress */}
+      <div className="text-center mb-3">
+        <span className="text-warning opacity-75">
+          {repeatedToday?.count != null ? repeatedToday.count : '-'}
+        </span>
+      </div>
+
       {error && <div className="error">{error}</div>}
       
       {currentPhrase && (
