@@ -98,16 +98,15 @@ class Syllable(Base):
 class SyllableParagraph(Base):
     __tablename__ = "syllables_paragraphs"
 
-    paragraph_id: Mapped[int] = mapped_column(primary_key=True)
+    rowid: Mapped[int] = mapped_column(primary_key=True)
 
     syllable_id: Mapped[int] = mapped_column(
         ForeignKey("syllables.syllable_id", ondelete="CASCADE")
     )
 
     example: Mapped[Optional[str]] = mapped_column(Text)
-
-    translate: Mapped[Optional[str]] = mapped_column(Text, name="translate")
-    sequence: Mapped[Optional[int]] = mapped_column(Integer, name="sequence")
+    translate: Mapped[Optional[str]] = mapped_column(Text)
+    sequence: Mapped[Optional[int]] = mapped_column(Integer)
 
     syllable: Mapped["Syllable"] = relationship(back_populates="paragraphs")
 

@@ -100,7 +100,8 @@ def get_phrases_count_repeated_today(db: Session, username: str) -> int:
         .options(noload("*"))
         .filter(models.Phrase.user_id == users.get_user_id(db, username))
         .filter(
-            models.Phrase.last_view >= datetime.utcnow().date() - timedelta(days=1)
+            models.Phrase.last_view
+            >= datetime.utcnow().date() - timedelta(days=1)
         )
         .count()
     )

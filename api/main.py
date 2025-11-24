@@ -236,7 +236,7 @@ def phrase(
 
 
 @app.get("/api/phrase/repeated_today", response_model=dto.RepeatedToday)
-def get_repeated_today(request: Request, db: Session = Depends(get_db)):
+def get_phrases_repeated_today(request: Request, db: Session = Depends(get_db)):
     if request.session.get("user"):
         return dto.RepeatedToday(
             count=phrases.get_phrases_count_repeated_today(
@@ -307,6 +307,21 @@ def get_syllables_by_word_part_endpoint(
         offset=offset,
         limit=limit,
     )
+
+
+@app.get("/api/syllable/repeated_today", response_model=dto.RepeatedToday)
+def get_syllables_repeated_today(
+    request: Request, db: Session = Depends(get_db)
+):
+    if request.session.get("user"):
+        return dto.RepeatedToday(
+            count=syllables.get_syllables_count_repeated_today(
+                db,
+                request.session.get("user"),
+            )
+        )
+    else:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
 
 
 @app.get("/api/books", response_model=list[dto.BookWithStatsDTO])

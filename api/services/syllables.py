@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, selectinload, noload
 from services import models, dto
 from services import users
 
@@ -169,4 +169,17 @@ def get_syllables_by_word_part(
 
     return (
         query.order_by(models.Syllable.word).offset(offset).limit(limit).all()
+    )
+
+
+def get_syllables_count_repeated_today(db: Session, username: str) -> int:
+    return (
+        db.query(models.Syllable)
+        .options(noload("*"))
+        .filter(
+            models.Syllable.last_view
+            >= datetime.utcnow().date() - timedelta(days=1)
+        )
+        .filter(models.Syllable.user_id == users.get_user_id(db, username))
+        .count()
     )
