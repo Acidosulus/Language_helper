@@ -9,6 +9,7 @@ function LearnSyllables() {
   const [currentSyllable, setCurrentSyllable] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [repeatedToday, setRepeatedToday] = useState(null); // { count }
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -19,6 +20,17 @@ function LearnSyllables() {
   const [isPaused, setIsPaused] = useState(false);
   const [ttsLoading, setTtsLoading] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
+
+  const fetchRepeatedToday = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/syllable/repeated_today`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json(); // { count }
+      setRepeatedToday(data);
+    } catch (e) {
+      // ignore non-critical errors
+    }
+  };
 
   const fetchNextSyllable = async (currentId = 0) => {
     try {
@@ -39,6 +51,7 @@ function LearnSyllables() {
       } else {
         setCurrentSyllable(data);
         setError('');
+        fetchRepeatedToday();
       }
     } catch (err) {
       setError(err.message);
@@ -138,6 +151,7 @@ function LearnSyllables() {
   useEffect(() => {
     if (user) {
       fetchNextSyllable();
+      fetchRepeatedToday();
     }
   }, [user]);
 
@@ -154,6 +168,11 @@ function LearnSyllables() {
   return (
     <div className="learn-container">
       <h2></h2>
+      <div className="text-center mb-3">
+        <span className="text-warning opacity-75">
+          {repeatedToday?.count != null ? repeatedToday.count : '-'}
+        </span>
+      </div>
       
       {error && <div className="error">{error}</div>}
       
