@@ -95,11 +95,11 @@ class BookWithStatsDTO(BaseModel):
             and self.Max_Paragraph_Number is not None
             and self.current_paragraph is not None
         ):
-                self.read_percentage = (
-                    (self.current_paragraph - self.Min_Paragraph_Number)
-                    * 100
-                    / (self.Max_Paragraph_Number - self.Min_Paragraph_Number)
-                )
+            self.read_percentage = (
+                (self.current_paragraph - self.Min_Paragraph_Number)
+                * 100
+                / (self.Max_Paragraph_Number - self.Min_Paragraph_Number)
+            )
         else:
             self.read_percentage = 0
         return self

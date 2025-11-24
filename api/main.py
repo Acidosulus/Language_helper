@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from passlib.context import CryptContext
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
 from services import syllables, books, phrases, models, dto
@@ -360,7 +360,6 @@ class TTSIn(BaseModel):
 
 @app.post("/api/text_to_speech")
 def text_to_speech(request: Request, payload: TTSIn):
-
     if not request.session.get("user"):
         raise HTTPException(status_code=401, detail="User not authenticated")
 

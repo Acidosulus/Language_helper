@@ -19,6 +19,20 @@ function BookReader() {
   const [isPaused, setIsPaused] = useState(false);
   const [ttsLoading, setTtsLoading] = useState(false);
 
+  // Derived progress data
+  const progressInfo = useMemo(() => {
+    if (!bookMeta) return { index: null, total: null, percent: null };
+    const min = Number(bookMeta.Min_Paragraph_Number ?? 0);
+    const max = Number(bookMeta.Max_Paragraph_Number ?? 0);
+    const total = max >= min ? (max - min + 1) : 0;
+    const currentAbs = startParagraph != null ? Number(startParagraph) : Number(bookMeta.current_paragraph ?? min);
+    if (!total || currentAbs == null) return { index: null, total, percent: null };
+    const index = currentAbs >= min && currentAbs <= max ? (currentAbs - min + 1) : Math.max(1, Math.min(total, currentAbs - min + 1));
+    const raw = (index / total) * 100;
+    const percent = Math.max(0, Math.min(100, raw));
+    return { index, total, percent };
+  }, [bookMeta, startParagraph]);
+
   // Selects the text content of the clicked sentence span
   const handleSentenceClick = (e) => {
     try {
@@ -259,9 +273,22 @@ function BookReader() {
 
   return (
     <div className="container mt-4">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2 className="mb-0">{bookMeta?.book_name || 'Book'}</h2>
-        <Link to="/books" className="btn btn-outline-secondary">← Back to Books</Link>
+      <div className="row align-items-center mb-3">
+        <div className="col-auto">
+          <h2 className="mb-0">{bookMeta?.book_name || 'Book'}</h2>
+        </div>
+        <div className="col text-center">
+          {progressInfo && progressInfo.total ? (
+            <span className="text-warning opacity-75">
+              {progressInfo.percent != null ? Math.round(progressInfo.percent) : 0}% · {progressInfo.index ?? '-'} / {progressInfo.total}
+            </span>
+          ) : (
+            <span className="text-warning opacity-75"> - % · - / -</span>
+          )}
+        </div>
+        <div className="col-auto">
+          <Link to="/books" className="btn btn-outline-secondary">← Back to Books</Link>
+        </div>
       </div>
 
       <div className="d-flex gap-2 mb-3">

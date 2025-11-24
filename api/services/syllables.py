@@ -153,7 +153,7 @@ def get_syllables_by_word_part(
     db: Session,
     user_name: str,
     ready: int,
-    word_part: str='',
+    word_part: str = "",
     offset: int = 0,
     limit: int = 100,
 ):
@@ -168,10 +168,5 @@ def get_syllables_by_word_part(
         query = query.filter(models.Syllable.word.contains(word_part))
 
     return (
-        query
-        .order_by(models.Syllable.word)
-        .offset(offset)
-        .limit(limit)
-        .all()
+        query.order_by(models.Syllable.word).offset(offset).limit(limit).all()
     )
-

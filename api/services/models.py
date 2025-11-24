@@ -148,10 +148,14 @@ class Sentence(Base):
 
 
 class ReadingJournal(Base):
-    __tablename__ = 'reading_journal'
+    __tablename__ = "reading_journal"
 
     row_id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id'), nullable=False)
-    id_book: Mapped[int] = mapped_column(ForeignKey('books.id_book'), nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.user_id"), nullable=False
+    )
+    id_book: Mapped[int] = mapped_column(
+        ForeignKey("books.id_book"), nullable=False
+    )
     id_paragraph: Mapped[int] = mapped_column(Integer, nullable=False)
     dt: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)

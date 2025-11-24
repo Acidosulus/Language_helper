@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import desc, select, func, update
-from sqlalchemy.orm import Session, load_only, noload
+from sqlalchemy.orm import Session, noload
 from services import models, users
 
 
@@ -92,7 +92,9 @@ def save_book_position(
                 current_paragraph=new_current_paragraph, dt=datetime.utcnow()
             )
         )
-        save_book_read_event(db, users.get_user_id(db, user_name), id_book, new_current_paragraph)
+        save_book_read_event(
+            db, users.get_user_id(db, user_name), id_book, new_current_paragraph
+        )
 
 
 def get_book(db: Session, id_book: int, user_name: str):
@@ -116,6 +118,6 @@ def save_book_read_event(db: Session, id_user, id_book, id_paragraph):
             user_id=id_user,
             id_book=id_book,
             id_paragraph=id_paragraph,
-            dt=datetime.utcnow())
+            dt=datetime.utcnow(),
+        )
     )
-
