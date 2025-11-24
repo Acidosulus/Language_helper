@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 
 class Phrase(BaseModel):
@@ -84,6 +84,25 @@ class BookWithStatsDTO(BaseModel):
     # Поля из label(...)
     Min_Paragraph_Number: Optional[int] = None
     Max_Paragraph_Number: Optional[int] = None
+
+    # Вычисляемое поле, включаемое в сериализацию как обычное поле
+    read_percentage: float = 0
+
+    @model_validator(mode="after")
+    def _validate(self) -> "BookWithStatsDTO":
+        if (
+            self.Min_Paragraph_Number is not None
+            and self.Max_Paragraph_Number is not None
+            and self.current_paragraph is not None
+        ):
+                self.read_percentage = (
+                    (self.current_paragraph - self.Min_Paragraph_Number)
+                    * 100
+                    / (self.Max_Paragraph_Number - self.Min_Paragraph_Number)
+                )
+        else:
+            self.read_percentage = 0
+        return self
 
     model_config = ConfigDict(from_attributes=True)
 

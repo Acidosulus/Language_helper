@@ -92,6 +92,7 @@ def save_book_position(
                 current_paragraph=new_current_paragraph, dt=datetime.utcnow()
             )
         )
+        save_book_read_event(db, users.get_user_id(db, user_name), id_book, new_current_paragraph)
 
 
 def get_book(db: Session, id_book: int, user_name: str):
@@ -107,3 +108,14 @@ def last_opened_book(db: Session, user_name: str):
         .order_by(desc(models.Book.dt))
         .first()
     )
+
+
+def save_book_read_event(db: Session, id_user, id_book, id_paragraph):
+    db.add(
+        models.ReadingJournal(
+            user_id=id_user,
+            id_book=id_book,
+            id_paragraph=id_paragraph,
+            dt=datetime.utcnow())
+    )
+
