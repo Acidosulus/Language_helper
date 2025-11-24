@@ -110,3 +110,7 @@ class BookWithStatsDTO(BaseModel):
 class BookPositionIn(BaseModel):
     id_book: int
     id_new_paragraph: int
+
+
+class RepeatedToday(BaseModel):
+    count: int | None

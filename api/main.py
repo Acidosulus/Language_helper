@@ -235,6 +235,19 @@ def phrase(
         raise HTTPException(status_code=401, detail="Требуется авторизация")
 
 
+@app.get("/api/phrase/repeated_today", response_model=dto.RepeatedToday)
+def get_repeated_today(request: Request, db: Session = Depends(get_db)):
+    if request.session.get("user"):
+        return dto.RepeatedToday(
+            count=phrases.get_phrases_count_repeated_today(
+                db,
+                request.session.get("user"),
+            )
+        )
+    else:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+
+
 @app.get("/api/syllable", response_model=dto.Syllable)
 def get_syllable(
     request: Request, syllable_id: int = None, db: Session = Depends(get_db)

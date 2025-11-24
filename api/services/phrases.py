@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, noload
 from services import models
 
 from services import users
@@ -92,3 +92,15 @@ def save_phrase(db: Session, phrase: models.Phrase, username: str):
 
     db.commit()
     return phrase_db
+
+
+def get_phrases_count_repeated_today(db: Session, username: str) -> int:
+    return (
+        db.query(models.Phrase)
+        .options(noload("*"))
+        .filter(models.Phrase.user_id == users.get_user_id(db, username))
+        .filter(
+            models.Phrase.last_view >= datetime.utcnow().date() - timedelta(days=1)
+        )
+        .count()
+    )
