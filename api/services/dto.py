@@ -84,6 +84,9 @@ class BookWithStatsDTO(BaseModel):
     # Поля из label(...)
     Min_Paragraph_Number: Optional[int] = None
     Max_Paragraph_Number: Optional[int] = None
+    paragraphs_read_24h: int = (
+        0  # Количество прочитанных параграфов за последние 24 часа
+    )
 
     # Вычисляемое поле, включаемое в сериализацию как обычное поле
     read_percentage: float = 0
