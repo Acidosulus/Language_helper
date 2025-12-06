@@ -219,6 +219,26 @@ function BookReader() {
     return startParagraph + 5 > bookMeta.Max_Paragraph_Number;
   }, [bookMeta, startParagraph]);
 
+  // Refresh only lightweight stats (e.g., paragraphs_read_24h) after saving position
+  const refreshBookStats = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/book?book_id=${id_book}`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      setBookMeta((prev) => ({
+        ...(prev || {}),
+        // keep previous known fields, but refresh dynamic stats
+        paragraphs_read_24h: data?.paragraphs_read_24h ?? prev?.paragraphs_read_24h,
+        Min_Paragraph_Number: data?.Min_Paragraph_Number ?? prev?.Min_Paragraph_Number,
+        Max_Paragraph_Number: data?.Max_Paragraph_Number ?? prev?.Max_Paragraph_Number,
+        // optionally sync current_paragraph from server if needed
+        current_paragraph: data?.current_paragraph ?? prev?.current_paragraph,
+      }));
+    } catch (_) {
+      // ignore silent refresh errors
+    }
+  };
+
   const savePosition = async (newStart) => {
     try {
       setSaving(true);
@@ -235,6 +255,9 @@ function BookReader() {
         // Don't block UI, but log error
         const txt = await res.text();
         console.error('Failed to save position', res.status, txt);
+      } else {
+        // After a successful save, refresh stats so the 24h counter updates without full reload
+        refreshBookStats();
       }
     } catch (e) {
       console.error('Error saving position', e);
@@ -292,7 +315,7 @@ function BookReader() {
           {progressInfo && progressInfo.total ? (
             <span className="text-warning opacity-75">
               {progressInfo.percent != null ? Math.round(progressInfo.percent) : 0}% · {progressInfo.index ?? '-'} / {progressInfo.total}
-              {typeof progressInfo?.paragraphs_read_24h === 'number' ? ` · ${bookMeta.paragraphs_read_24h}` : ''}
+              {typeof bookMeta?.paragraphs_read_24h === 'number' ? ` · ${bookMeta.paragraphs_read_24h}` : ''}
             </span>
           ) : (
             <span className="text-warning opacity-75"> - % · - / -</span>
