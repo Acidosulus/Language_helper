@@ -292,7 +292,7 @@ function BookReader() {
           {progressInfo && progressInfo.total ? (
             <span className="text-warning opacity-75">
               {progressInfo.percent != null ? Math.round(progressInfo.percent) : 0}% · {progressInfo.index ?? '-'} / {progressInfo.total}
-              {typeof bookMeta?.paragraphs_read_24h === 'number' ? ` · ${bookMeta.paragraphs_read_24h}` : ''}
+              {typeof progressInfo?.paragraphs_read_24h === 'number' ? ` · ${bookMeta.paragraphs_read_24h}` : ''}
             </span>
           ) : (
             <span className="text-warning opacity-75"> - % · - / -</span>

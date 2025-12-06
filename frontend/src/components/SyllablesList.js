@@ -74,7 +74,7 @@ function SyllablesList() {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this syllable?')) {
       try {
-        await fetch(`${apiUrl}/api/syllable/${id}`, {
+        await fetch(`${apiUrl}/syllable/${id}`, {
           method: 'DELETE',
           credentials: 'include',
         });
