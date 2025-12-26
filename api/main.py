@@ -416,4 +416,6 @@ if __name__ == "__main__":
         reload=False,
         ssl_certfile="localhost+3.pem",
         ssl_keyfile="localhost+3-key.pem",
+        proxy_headers=True,
+        forwarded_allow_ips="*",
     )

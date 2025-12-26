@@ -1,0 +1,30 @@
+# Dockerfile for NGINX serving the provided config and frontend build
+# - Copies nginx.conf and certs
+# - Serves static from /usr/share/nginx/html
+# - Exposes 443 (per your config)
+# - Optionally adjusts upstream API host via build ARG
+
+FROM nginx:1.25-alpine
+
+# Optional: allow overriding upstream API address at build time
+# Example: docker build --build-arg API_UPSTREAM=host.docker.internal:8000 -t lang-helper-nginx -f deployment/Dockerfile_nginx .
+ARG API_UPSTREAM=host.docker.internal:8000
+
+# Copy NGINX config and SSL certs/keys
+# nginx.conf uses relative cert paths, so place them under /etc/nginx/
+COPY nginx/conf/nginx.conf /etc/nginx/nginx.conf
+COPY nginx/conf/*.pem /etc/nginx/
+
+# Copy frontend build to the standard nginx html directory
+COPY frontend/build/ /usr/share/nginx/html/
+
+# Patch Windows path in nginx.conf to the container path
+RUN sed -i 's#I:/Language_helper/frontend/build#/usr/share/nginx/html#g' /etc/nginx/nginx.conf \
+    # Optionally rewrite upstream API target to something reachable from container (Docker Desktop: host.docker.internal)
+    && sed -i "s#server 127.0.0.1:8000;#server ${API_UPSTREAM};#g" /etc/nginx/nginx.conf
+
+# If you also need to serve on 80, you can EXPOSE 80 and adjust nginx.conf accordingly
+EXPOSE 443
+
+# Run nginx in foreground
+CMD ["nginx", "-g", "daemon off;"]

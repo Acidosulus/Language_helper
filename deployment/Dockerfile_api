@@ -1,0 +1,48 @@
+FROM python:3.11-slim
+
+# Prevent Python from writing .pyc files and enable unbuffered logs
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Set workdir
+WORKDIR /app/api
+
+# System dependencies (lightweight). psycopg2-binary generally ships wheels.
+# If you face build issues, uncomment the build tools below.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+# For potential source builds (only if needed):
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     build-essential libffi-dev \
+#     && rm -rf /var/lib/apt/lists/*
+
+# Copy only dependency descriptors first for better layer caching
+COPY api/pyproject.toml /app/api/pyproject.toml
+
+# Install runtime Python dependencies
+# Note: the project lacks a build-system in pyproject.toml, so we install deps directly.
+RUN python -m pip install --upgrade pip \
+    && pip install \
+        fastapi==0.121.2 \
+        "psycopg2-binary==2.9.11" \
+        itsdangerous==2.2.0 \
+        gTTS==2.5.4 \
+        uvicorn==0.24.0 \
+        "python-jose[cryptography]==3.3.0" \
+        "passlib[bcrypt]==1.7.4" \
+        "python-multipart==0.0.6" \
+        python-dotenv==1.0.0 \
+        waitress==2.1.2 \
+        "SQLAlchemy>=2.0,<3"
+
+# Copy the rest of the API source
+COPY api/ /app/api/
+
+# Expose application port
+EXPOSE 8000
+
+# Default command: run uvicorn without SSL (TLS should be terminated by a reverse proxy like nginx)
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
