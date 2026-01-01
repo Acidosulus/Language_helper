@@ -8,10 +8,12 @@ from passlib.context import CryptContext
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
-from services import syllables, books, phrases, models, dto
+from db import syllables, books, phrases, models, dto
 from pydantic import BaseModel
 from io import BytesIO
 import gtts
+
+from wooordhunt import parser
 
 app = FastAPI()
 
@@ -405,6 +407,46 @@ def text_to_speech(request: Request, payload: TTSIn):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"TTS error: {e}")
 
+@app.get("/api/word_from_wooordhunt", response_model=dto.Syllable)
+def word_from_wooordhunt(request: Request, word: str) -> dto.Syllable:
+    lc_link = fr"https://wooordhunt.ru/word/{word}"
+    wh = parser.Wooordhunt(lc_link)
+
+    # Собираем данные не из БД, но приводим их к DTO, совместимому с моделью Syllable
+    examples_list = wh.get_examples() or []
+    # Сконвертируем список примеров в строку для поля examples (Pydantic ожидает str)
+    examples_text = "\n".join(
+        f"{item.get('example','').strip()} — {item.get('translate','') or ''}" for item in examples_list
+    ) or None
+
+    # И одновременно подготовим paragraphs как структурированный список
+    paragraphs = [
+        dto.SyllableParagraph(
+            example=item.get("example"),
+            translate=item.get("translate"),
+            sequence=idx + 1,
+        )
+        for idx, item in enumerate(examples_list)
+    ]
+
+    syllable_dto = dto.Syllable(
+        syllable_id=None,
+        word=word,
+        transcription=wh.get_transcription(),
+        translations=wh.get_translation(),
+        examples=examples_text,
+        show_count=0,
+        ready=0,
+        last_view=None,
+        user_id=None,
+        paragraphs=paragraphs,
+    )
+
+    from rich import print
+    print(syllable_dto)
+
+    return syllable_dto
+
 
 if __name__ == "__main__":
     import uvicorn
@@ -412,7 +454,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8002,
         reload=False,
         ssl_certfile="localhost+3.pem",
         ssl_keyfile="localhost+3-key.pem",

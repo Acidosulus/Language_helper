@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy.orm import Session, selectinload, noload
-from services import models, dto
-from services import users
+from db import models, dto
+from db import users
 
 
 def get_syllable(db: Session, syllable_id: int, username: str):

@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi==0.121.2",
+    "beautifulsoup4==4.14.3 ",
+    "html5lib==1.1",
     "psycopg2[binary]==2.9.11",
     "itsdangerous==2.2.0",
     "gTTS==2.5.4",

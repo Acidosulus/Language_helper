@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session, noload
-from services import models
+from db import models
 
-from services import users
+from db import users
 
 
 def get_phrases_by_user(
