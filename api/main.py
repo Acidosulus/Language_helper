@@ -442,9 +442,6 @@ def word_from_wooordhunt(request: Request, word: str) -> dto.Syllable:
         paragraphs=paragraphs,
     )
 
-    from rich import print
-    print(syllable_dto)
-
     return syllable_dto
 
 
@@ -454,7 +451,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8002,
+        port=8000,
         reload=False,
         ssl_certfile="localhost+3.pem",
         ssl_keyfile="localhost+3-key.pem",

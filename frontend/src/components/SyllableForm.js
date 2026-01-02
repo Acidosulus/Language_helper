@@ -17,6 +17,7 @@ function SyllableForm() {
     examples: null,
     paragraphs: []
   });
+  const [loadingWoooordhunt, setLoadingWoooordhunt] = useState(false);
   
   const [newParagraph, setNewParagraph] = useState({
     example: '',
@@ -52,6 +53,37 @@ function SyllableForm() {
       ...prev,
       [name]: value
     }));
+  };
+
+  const fetchFromWoooordhunt = async () => {
+    setError('');
+    const w = (syllable.word || '').trim();
+    if (!w) {
+      setError('Please enter a word first');
+      return;
+    }
+    try {
+      setLoadingWoooordhunt(true);
+      const response = await fetch(`${apiUrl}/word_from_wooordhunt?word=${encodeURIComponent(w)}`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to fetch from woooordhunt');
+      }
+      setSyllable({
+        word: data.word || w,
+        transcription: data.transcription || '',
+        translations: data.translations || '',
+        examples: data.examples || '',
+        paragraphs: Array.isArray(data.paragraphs) ? data.paragraphs : []
+      });
+    } catch (err) {
+      console.error('wooordhunt fetch error:', err);
+      setError(err.message || 'Failed to fetch from woooordhunt');
+    } finally {
+      setLoadingWoooordhunt(false);
+    }
   };
   
   const handleParagraphChange = (e, index) => {
@@ -188,6 +220,17 @@ function SyllableForm() {
             onChange={handleChange}
             required
           />
+          <div className="mt-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary"
+              onClick={fetchFromWoooordhunt}
+              disabled={!((syllable.word || '').trim()) || loadingWoooordhunt}
+              title="Fetch data from woooordhunt"
+            >
+              {loadingWoooordhunt ? 'Loading…' : 'wooordhunt'}
+            </button>
+          </div>
         </div>
 
         <div className="mb-3">
