@@ -10,6 +10,9 @@ function BookReader() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  // Words under study found in current window of text
+  // Map: lowercased word -> { word, transcription, translations }
+  const [studyMap, setStudyMap] = useState({});
   
   // Audio player state
   const audioRef = useRef(null);
@@ -209,6 +212,98 @@ function BookReader() {
     loadWindow();
   }, [bookMeta, startParagraph]);
 
+  // After paragraphs are loaded, fetch words-under-study present in the text
+  useEffect(() => {
+    const fetchStudyWords = async () => {
+      try {
+        if (!paragraphs || paragraphs.length === 0) {
+          setStudyMap({});
+          return;
+        }
+        // Concatenate visible text (limit size to be safe)
+        const text = paragraphs
+          .flatMap((p) => (p.sentences || []).map((s) => s.sentence || ''))
+          .join(' ')
+          .slice(0, 200000);
+        if (!text.trim()) {
+          setStudyMap({});
+          return;
+        }
+        const res = await fetch(`${apiUrl}/syllables/in_text`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        if (!res.ok) {
+          // don't block reading
+          console.warn('Failed to fetch syllables/in_text', res.status);
+          setStudyMap({});
+          return;
+        }
+        const list = await res.json();
+        // Build lookup map by lowercased word
+        const map = {};
+        (list || []).forEach((it) => {
+          if (it && it.word) {
+            const key = String(it.word).toLowerCase();
+            map[key] = { word: it.word, transcription: it.transcription, translations: it.translations };
+          }
+        });
+        setStudyMap(map);
+      } catch (e) {
+        console.warn('syllables/in_text error', e);
+        setStudyMap({});
+      }
+    };
+    fetchStudyWords();
+  }, [paragraphs, apiUrl]);
+
+  // Helpers to highlight study words in a sentence
+  const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const renderSentence = (text, keyPrefix = '') => {
+    if (!text) return null;
+    const words = Object.keys(studyMap || {});
+    if (!words.length) return text;
+    // Build regex to match any of the study words with unicode letter boundaries
+    const patterns = words
+      .sort((a, b) => b.length - a.length)
+      .map((w) => escapeRegex(w));
+    // Fallback to simple word boundary. Note: \b is imperfect for non-latin, but acceptable here.
+    const re = new RegExp(`(${patterns.join('|')})`, 'gi');
+    const out = [];
+    let lastIndex = 0;
+    let idx = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const start = m.index;
+      const end = start + m[0].length;
+      if (start > lastIndex) {
+        out.push(text.slice(lastIndex, start));
+      }
+      const raw = m[0];
+      const key = String(raw).toLowerCase();
+      const info = studyMap[key] || studyMap[String(m[1] || '').toLowerCase()];
+      const title = [info?.translations || '', info?.transcription ? ` [${info.transcription}]` : '']
+        .join('')
+        .trim();
+      out.push(
+        <span
+          key={`${keyPrefix}hl-${idx}-${start}`}
+          className="study-word"
+          title={title || undefined}
+          style={{ color: '#fff3cd' }}
+        >
+          {raw}
+        </span>
+      );
+      idx += 1;
+      lastIndex = end;
+    }
+    if (lastIndex < text.length) out.push(text.slice(lastIndex));
+    return out;
+  };
+
   const atStart = useMemo(() => {
     if (!bookMeta || startParagraph == null) return true;
     return startParagraph <= bookMeta.Min_Paragraph_Number;
@@ -351,7 +446,7 @@ function BookReader() {
                       onClick={handleSentenceClick}
                       style={{ color: idx % 2 === 0 ? 'lightgreen' : 'lightblue', cursor: 'pointer' }}
                     >
-                      {s.sentence}
+                      {renderSentence(s.sentence, `${p.id_paragraph}-${idx}-`)}
                     </span>
                     <button
                       type="button"
