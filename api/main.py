@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from io import BytesIO
 import gtts
 
+from db.dto import SyllablesInTextIn
 from wooordhunt import parser
 
 app = FastAPI()
@@ -407,6 +408,29 @@ def text_to_speech(request: Request, payload: TTSIn):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"TTS error: {e}")
 
+
+@app.post("/api/syllables/in_text", response_model=list[dto.Syllable])
+def get_user_syllables_in_text_endpoint(
+    request: Request,
+    payload: SyllablesInTextIn,
+    db: Session = Depends(get_db),
+):
+    """
+    Возвращает слоги пользователя (ready == 0), встречающиеся в переданном тексте.
+    Текст передаётся в теле запроса: {"text": "..."}
+    Требуется авторизация по сессии.
+    """
+    username = request.session.get("user")
+    if not username:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+
+    text = (payload.text or "").strip()
+    if not text:
+        return []
+
+    return syllables.get_user_syllables_in_text(db=db, text=text, username=username)
+
+
 @app.get("/api/word_from_wooordhunt", response_model=dto.Syllable)
 def word_from_wooordhunt(request: Request, word: str) -> dto.Syllable:
     lc_link = fr"https://wooordhunt.ru/word/{word}"
@@ -451,7 +475,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8002,
         reload=False,
         ssl_certfile="localhost+3.pem",
         ssl_keyfile="localhost+3-key.pem",

@@ -117,3 +117,7 @@ class BookPositionIn(BaseModel):
 
 class RepeatedToday(BaseModel):
     count: int | None
+
+
+class SyllablesInTextIn(BaseModel):
+    text: str

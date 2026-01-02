@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 from typing import Optional
+import re
 
 from sqlalchemy.orm import Session, selectinload, noload
+from sqlalchemy import func
 from db import models, dto
 from db import users
 
@@ -182,4 +184,37 @@ def get_syllables_count_repeated_today(db: Session, username: str) -> int:
         )
         .filter(models.Syllable.user_id == users.get_user_id(db, username))
         .count()
+    )
+
+
+def get_user_syllables_in_text(
+    db: Session, text: str, username: str
+):
+    """
+    Возвращает список слов (Syllable) пользователя на изучении (ready == 0),
+    которые встречаются в переданном тексте. Реляции paragraphs подгружаются
+    так же, как это делается в get_syllable (см. options(selectinload(...))).
+
+    Сопоставление слов выполняется по регистронезависимому сравнению
+    с учётом границ слов: из текста извлекаются токены вида [\w'-]+.
+    """
+
+    # Извлекаем слова из текста и нормализуем к нижнему регистру
+    tokens = set(
+        w.lower() for w in re.findall(r"\b[\w'-]+\b", text, flags=re.UNICODE)
+    )
+    if not tokens:
+        return []
+
+    user_id = users.get_user_id(db, username)
+
+    return (
+        db.query(models.Syllable)
+        .join(models.User)
+        .filter(models.User.user_id == user_id)
+        .filter(models.Syllable.ready == 0)
+        .filter(func.lower(models.Syllable.word).in_(tokens))
+        .options(selectinload(models.Syllable.paragraphs))
+        .order_by(models.Syllable.word)
+        .all()
     )
