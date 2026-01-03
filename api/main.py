@@ -12,6 +12,8 @@ from db import syllables, books, phrases, models, dto
 from pydantic import BaseModel
 from io import BytesIO
 import gtts
+import httpx
+import json
 
 from db.dto import SyllablesInTextIn
 from wooordhunt import parser
@@ -407,6 +409,55 @@ def text_to_speech(request: Request, payload: TTSIn):
         return StreamingResponse(buf, media_type="audio/mpeg")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"TTS error: {e}")
+
+
+class LLMAnalyzeIn(BaseModel):
+    text: str
+
+
+@app.post("/api/llm/analyze")
+async def analyze_text_with_llm(payload: LLMAnalyzeIn):
+    """
+    Принимает текст, отправляет запрос в локальный Ollama (как в exp.py),
+    и возвращает JSON-результат анализа.
+    """
+    text = (payload.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is empty")
+
+    # Если запускаешь Python ВНУТРИ докера, замени 127.0.0.1 на 'ollama'
+    # Здесь используем тот же URL, что и в exp.py
+    url = "http://192.168.0.19:11434/api/generate"
+
+    prompt = f"""
+    Проанализируй английский текст: "{text}"
+    Верни строго JSON на русском языке со следующей структурой:
+    {{
+        "translation": "перевод на русский",
+        "grammar": "разбор грамматики исходной фразы на русском языке",
+        "idioms": ["список идиом с их переводом на русский язык"],
+        "cultural_references": "культурные отсылки на русском языке"
+    }}
+    """
+
+    payload_req = {
+        "model": "llama3.2",
+        "prompt": prompt,
+        "stream": False,
+        "format": "json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            resp = await client.post(url, json=payload_req)
+            resp.raise_for_status()
+            data = resp.json()
+            # Ollama возвращает JSON-строку в поле 'response'
+            return json.loads(data.get("response", "{}"))
+    except httpx.ConnectError:
+        raise HTTPException(status_code=502, detail="Не удалось подключиться к Ollama. Проверь, запущен ли контейнер.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LLM error: {e}")
 
 
 @app.post("/api/syllables/in_text", response_model=list[dto.Syllable])
