@@ -448,7 +448,7 @@ async def analyze_text_with_llm(payload: LLMAnalyzeIn):
     }
 
     try:
-        async with httpx.AsyncClient(timeout=180.0) as client:
+        async with httpx.AsyncClient(timeout=400) as client:
             resp = await client.post(url, json=payload_req)
             resp.raise_for_status()
             data = resp.json()
@@ -526,7 +526,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8002,
+        port=8000,
         reload=False,
         ssl_certfile="localhost+3.pem",
         ssl_keyfile="localhost+3-key.pem",

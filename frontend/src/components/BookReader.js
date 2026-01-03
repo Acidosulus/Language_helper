@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import ReactDOM from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 
 function BookReader() {
@@ -21,6 +22,12 @@ function BookReader() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [ttsLoading, setTtsLoading] = useState(false);
+  // LLM analyze state
+  const [llmVisible, setLlmVisible] = useState(false);
+  const [llmLoading, setLlmLoading] = useState(false);
+  const [llmResult, setLlmResult] = useState(null); // {translation, grammar, idioms, cultural_references}
+  const [llmElapsedMs, setLlmElapsedMs] = useState(0);
+  const [llmError, setLlmError] = useState(null);
 
   // Derived progress data
   const progressInfo = useMemo(() => {
@@ -49,6 +56,39 @@ function BookReader() {
     } catch (err) {
       // no-op if selection API not available
       // console.warn('Selection failed', err);
+    }
+  };
+
+  const analyzeSentence = async (text) => {
+    if (!text) return;
+    setLlmLoading(true);
+    setLlmVisible(true);
+    setLlmResult(null);
+    setLlmError(null);
+    const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    try {
+      const res = await fetch(`${apiUrl}/llm/analyze`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          accept: 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`LLM analyze failed: ${res.status} ${txt}`);
+      }
+      const data = await res.json();
+      setLlmResult(data);
+    } catch (e) {
+      console.error(e);
+      setLlmError('Не удалось получить объяснение от LLM.');
+    } finally {
+      const t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      setLlmElapsedMs(Math.max(0, t1 - t0));
+      setLlmLoading(false);
     }
   };
 
@@ -458,6 +498,16 @@ function BookReader() {
                     >
                       {ttsLoading ? '…' : '🔊'}
                     </button>
+                    <button
+                      type="button"
+                      className="btn btn-link btn-sm p-0 ms-1 align-baseline"
+                      title="Объяснить предложение (LLM)"
+                      onClick={() => analyzeSentence(s.sentence)}
+                      disabled={llmLoading}
+                      style={{ verticalAlign: 'baseline', textDecoration: 'none' }}
+                    >
+                      {llmLoading ? '…' : '🧠'}
+                    </button>
                     {idx !== p.sentences.length - 1 && ' '}
                   </React.Fragment>
                 ))}
@@ -501,8 +551,75 @@ function BookReader() {
         </div>
       )}
 
+      {/* Bottom LLM panel via portal */}
+      {llmVisible && typeof document !== 'undefined' && ReactDOM.createPortal(
+        (
+          <div
+            className="shadow bg-white border-top"
+            style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 200000, maxHeight: '40vh', overflowY: 'auto' }}
+          >
+            <div className="container py-2">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <div className="d-flex align-items-center gap-2">
+                  <strong>Объяснение LLM</strong>
+                  <span className="text-muted" style={{ fontSize: '0.9em' }}>
+                    Время: {(llmElapsedMs / 1000).toFixed(2)} с
+                  </span>
+                </div>
+                <button className="btn btn-sm btn-outline-secondary" onClick={() => setLlmVisible(false)} aria-label="Закрыть">✖</button>
+              </div>
+              {llmLoading && (
+                <div className="text-muted">Запрос к модели…</div>
+              )}
+              {llmError && (
+                <div className="alert alert-danger py-1 mb-2">{llmError}</div>
+              )}
+              {llmResult && (
+                <div className="llm-result">
+                  {llmResult.translation && (
+                    <div className="mb-2"><strong>Перевод:</strong> {llmResult.translation}</div>
+                  )}
+                  {llmResult.grammar && (
+                    <div className="mb-2"><strong>Грамматика:</strong> {llmResult.grammar}</div>
+                  )}
+                  {llmResult.idioms && (
+                    <div className="mb-2">
+                      <strong>Идиомы:</strong>{' '}
+                      {Array.isArray(llmResult.idioms) ? (
+                        <ul className="mb-0">
+                          {llmResult.idioms.map((it, i) => (
+                            <li key={i}>{String(it)}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span>{String(llmResult.idioms)}</span>
+                      )}
+                    </div>
+                  )}
+                  {llmResult.cultural_references && (
+                    <div className="mb-2">
+                      <strong>Культурные отсылки:</strong>{' '}
+                      {Array.isArray(llmResult.cultural_references) ? (
+                        <ul className="mb-0">
+                          {llmResult.cultural_references.map((it, i) => (
+                            <li key={i}>{String(it)}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span>{String(llmResult.cultural_references)}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ),
+        document.body
+      )}
+
       {/* Bottom spacer to allow extra scroll and space for context menus */}
-      <div aria-hidden="true" style={{ height: '100vh' }} />
+      <div aria-hidden="true" style={{ height: llmVisible || playerVisible ? '140px' : '100vh' }} />
     </div>
   );
 }
