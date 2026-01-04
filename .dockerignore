@@ -1,0 +1,38 @@
+# General VCS/editor junk
+.git
+.idea
+.vscode
+.DS_Store
+npm-debug.log*
+yarn-error.log*
+
+# Python bytecode
+**/__pycache__/
+**/*.py[cod]
+ 
+ # Python virtual environments
+ .venv/
+ venv/
+ api/.venv/
+ 
+ # Python packaging artifacts
+ **/*.egg-info/
+ **/*.dist-info/
+ build/
+ dist/
+
+# Node modules (don’t send to Docker daemon)
+**/node_modules/
+frontend/.cache/
+
+# Frontend build system caches
+frontend/.parcel-cache/
+frontend/.turbo/
+frontend/.next/
+
+# Keep frontend/build because Dockerfile_nginx copies it
+# frontend/build/
+
+# Misc
+*.swp
+*.swo

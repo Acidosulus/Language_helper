@@ -138,9 +138,17 @@
   color: #ffffff; /* ensure learn page title is bright */
 }
 
+
+.syllable {
+    color: #9fe7a4;
+    font-weight: bold;
+}
+
 .phrase-text {
   margin-bottom: 30px;
 }
+
+
 
 .phrase-text h3 {
   font-size: 28px;
@@ -155,8 +163,16 @@
   line-height: 1.5;
 }
 
+
+
+.translation {
+  color: #ffd54a; /* slightly dimmer than main but still bright */
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
 .transcription {
-  color: #e0e0e0; /* slightly dimmer than main but still bright */
+  color: #ea2424; /* slightly dimmer than main but still bright */
   font-style: italic;
   margin-bottom: 20px;
 }
@@ -168,11 +184,13 @@
 }
 
 .paragraphs {
+    color: #61dafb;
   margin-top: 25px;
   text-align: left;
 }
 
 .paragraph {
+  color: #4454ff;
   margin-bottom: 20px;
   padding: 15px;
   background-color: #2a2a2a;
@@ -186,15 +204,14 @@
 }
 
 .example {
+  color: #64ffda;
   font-size: 16px;
   margin-bottom: 5px;
-  color: #f5f5f5; /* high-contrast example text */
 }
 
 .example-translation {
-  font-size: 14px;
-  color: #e0e0e0; /* brighten secondary text */
-  font-style: italic;
+  font-size: 16px;
+  color: cadetblue;
 }
 
 .no-syllables {

@@ -181,7 +181,7 @@ function LearnSyllables() {
       ) : currentSyllable ? (
         <div className="phrase-card">
           <div className="phrase-text">
-            <h3>{currentSyllable.word}</h3>
+            <h3 className="syllable">{currentSyllable.word}</h3>
             {currentSyllable.transcription && (
               <div className="transcription">
                 [{currentSyllable.transcription}]
@@ -190,7 +190,7 @@ function LearnSyllables() {
             
             {currentSyllable.translations && (
               <div className="translation">
-                <strong>Перевод:</strong> {currentSyllable.translations}
+                {currentSyllable.translations}
               </div>
             )}
             
@@ -212,7 +212,6 @@ function LearnSyllables() {
             
             {currentSyllable.paragraphs && currentSyllable.paragraphs.length > 0 && (
               <div className="paragraphs">
-                <h4>Примеры использования:</h4>
                 {currentSyllable.paragraphs.map((para, index) => (
                   <div key={index} className="paragraph">
                     <div className="example">
