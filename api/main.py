@@ -414,9 +414,81 @@ def text_to_speech(request: Request, payload: TTSIn):
 class LLMAnalyzeIn(BaseModel):
     text: str
 
-
+from mistralai import Mistral
 @app.post("/api/llm/analyze")
 async def analyze_text_with_llm(payload: LLMAnalyzeIn):
+    """
+    Принимает текст, отправляет запрос в локальный Ollama (как в exp.py),
+    и возвращает JSON-результат анализа.
+    """
+    with Mistral(
+            api_key='7KzulYHjsyUpnBJPn5sUQDZYEB7V4maR',
+    ) as mistral:
+
+        text = (payload.text or "").strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="Text is empty")
+
+        try:
+            res = mistral.chat.complete(
+                model="mistral-small-latest",
+                messages=[
+                    {
+                        "content": f"""
+                        Проанализируй английский текст: "{text}"
+                        Верни строго JSON на русском языке со следующей структурой:
+                        {{
+                            "translation": "перевод на русский",
+                            "grammar": "разбор грамматики исходной фразы на русском языке",
+                            "idioms": ["список идиом с их переводом на русский язык"],
+                            "cultural_references": "культурные отсылки на русском языке"
+                        }}
+                        """,
+                        "role": "user",
+                    },
+                ],
+                stream=False,
+                response_format={"type": "json_object"},
+            )
+        except httpx.ConnectError:
+            raise HTTPException(
+                status_code=503,
+                detail="LLM недоступен: ошибка сетевого подключения (DNS/интернет). Повторите позже.",
+            )
+        except httpx.TimeoutException:
+            raise HTTPException(status_code=504, detail="LLM не ответил вовремя")
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"LLM upstream error: {e}")
+
+        # Попытка извлечь текст ответа и вернуть его как JSON
+        try:
+            # Новые версии SDK могут иметь удобное поле output_text
+            output_text = getattr(res, "output_text", None)
+
+            if not output_text:
+                # Универсальное извлечение из первой choice
+                msg = res.choices[0].message
+                content = getattr(msg, "content", "")
+                if isinstance(content, list):
+                    # content может быть списком частей с полем text
+                    parts = []
+                    for part in content:
+                        text_part = getattr(part, "text", None)
+                        if text_part:
+                            parts.append(text_part)
+                    output_text = "".join(parts)
+                else:
+                    output_text = content
+
+            # Преобразуем в dict и возвращаем
+            import json as _json
+            return _json.loads(output_text)
+        except Exception as e:
+            # Если не удалось распарсить, вернем как 500 с текстом ошибки
+            raise HTTPException(status_code=500, detail=f"LLM parse error: {e}")
+
+@app.post("/api/llm/analyze_local_ollama")
+async def analyze_text_with_llm_local_ollama(payload: LLMAnalyzeIn):
     """
     Принимает текст, отправляет запрос в локальный Ollama (как в exp.py),
     и возвращает JSON-результат анализа.

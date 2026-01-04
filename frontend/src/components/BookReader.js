@@ -28,6 +28,7 @@ function BookReader() {
   const [llmResult, setLlmResult] = useState(null); // {translation, grammar, idioms, cultural_references}
   const [llmElapsedMs, setLlmElapsedMs] = useState(0);
   const [llmError, setLlmError] = useState(null);
+  const [llmStartTs, setLlmStartTs] = useState(null);
 
   // Derived progress data
   const progressInfo = useMemo(() => {
@@ -66,6 +67,8 @@ function BookReader() {
     setLlmResult(null);
     setLlmError(null);
     const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    setLlmStartTs(t0);
+    setLlmElapsedMs(0);
     try {
       const res = await fetch(`${apiUrl}/llm/analyze`, {
         method: 'POST',
@@ -88,9 +91,20 @@ function BookReader() {
     } finally {
       const t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
       setLlmElapsedMs(Math.max(0, t1 - t0));
+      setLlmStartTs(null);
       setLlmLoading(false);
     }
   };
+
+  // Live timer while waiting for LLM
+  useEffect(() => {
+    if (!llmVisible || llmStartTs == null) return undefined;
+    const id = setInterval(() => {
+      const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      setLlmElapsedMs(Math.max(0, now - llmStartTs));
+    }, 200);
+    return () => clearInterval(id);
+  }, [llmVisible, llmStartTs]);
 
   const cleanupAudioUrl = () => {
     if (audioUrl) {
@@ -551,42 +565,42 @@ function BookReader() {
         </div>
       )}
 
-      {/* Bottom LLM panel via portal */}
+      {/* Bottom LLM panel via portal (dark theme) */}
       {llmVisible && typeof document !== 'undefined' && ReactDOM.createPortal(
         (
           <div
-            className="shadow bg-white border-top"
-            style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 200000, maxHeight: '40vh', overflowY: 'auto' }}
+            className="shadow border-top"
+            style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 200000, maxHeight: '40vh', overflowY: 'auto', backgroundColor: '#121212', color: '#f8f9fa', borderTopColor: '#343a40' }}
           >
             <div className="container py-2">
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <div className="d-flex align-items-center gap-2">
-                  <strong>Объяснение LLM</strong>
-                  <span className="text-muted" style={{ fontSize: '0.9em' }}>
+                  <strong style={{ color: '#e9ecef' }}>Объяснение LLM</strong>
+                  <span className="opacity-75" style={{ fontSize: '0.9em', color: '#ced4da' }}>
                     Время: {(llmElapsedMs / 1000).toFixed(2)} с
                   </span>
                 </div>
-                <button className="btn btn-sm btn-outline-secondary" onClick={() => setLlmVisible(false)} aria-label="Закрыть">✖</button>
+                <button className="btn btn-sm btn-outline-light" onClick={() => { setLlmVisible(false); setLlmStartTs(null); }} aria-label="Закрыть">✖</button>
               </div>
               {llmLoading && (
-                <div className="text-muted">Запрос к модели…</div>
+                <div className="opacity-75" style={{ color: '#ced4da' }}>Запрос к модели…</div>
               )}
               {llmError && (
                 <div className="alert alert-danger py-1 mb-2">{llmError}</div>
               )}
               {llmResult && (
-                <div className="llm-result">
+                <div className="llm-result" style={{ color: '#f8f9fa' }}>
                   {llmResult.translation && (
-                    <div className="mb-2"><strong>Перевод:</strong> {llmResult.translation}</div>
+                    <div className="mb-2"><strong style={{ color: '#e9ecef' }}>Перевод:</strong> {llmResult.translation}</div>
                   )}
                   {llmResult.grammar && (
-                    <div className="mb-2"><strong>Грамматика:</strong> {llmResult.grammar}</div>
+                    <div className="mb-2"><strong style={{ color: '#e9ecef' }}>Грамматика:</strong> {llmResult.grammar}</div>
                   )}
                   {llmResult.idioms && (
                     <div className="mb-2">
-                      <strong>Идиомы:</strong>{' '}
+                      <strong style={{ color: '#e9ecef' }}>Идиомы:</strong>{' '}
                       {Array.isArray(llmResult.idioms) ? (
-                        <ul className="mb-0">
+                        <ul className="mb-0" style={{ color: '#f8f9fa' }}>
                           {llmResult.idioms.map((it, i) => (
                             <li key={i}>{String(it)}</li>
                           ))}
@@ -598,9 +612,9 @@ function BookReader() {
                   )}
                   {llmResult.cultural_references && (
                     <div className="mb-2">
-                      <strong>Культурные отсылки:</strong>{' '}
+                      <strong style={{ color: '#e9ecef' }}>Культурные отсылки:</strong>{' '}
                       {Array.isArray(llmResult.cultural_references) ? (
-                        <ul className="mb-0">
+                        <ul className="mb-0" style={{ color: '#f8f9fa' }}>
                           {llmResult.cultural_references.map((it, i) => (
                             <li key={i}>{String(it)}</li>
                           ))}
