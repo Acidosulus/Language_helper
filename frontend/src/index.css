@@ -23,3 +23,35 @@ code {
   --bs-body-bg: #121212;
   --bs-body-color: #f0f0f0;
 }
+
+/* Simple code block and JSON syntax highlight (dark) */
+.code-block {
+  background: #1e1e1e;
+  border: 1px solid #2a2a2a;
+  color: #d4d4d4;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.9rem;
+}
+.code-key { color: #9cdcfe; }
+.code-string { color: #ce9178; }
+.code-number { color: #b5cea8; }
+.code-boolean { color: #569cd6; }
+.code-null { color: #c586c0; }
+
+/* Highlighted study words inside text */
+.study-word {
+  background-color: rgba(255, 193, 7, 0.15);
+  padding: 0 2px;
+  border-radius: 3px;
+}
+
+/* LLM panel coloring */
+.llm-panel { color: #6fb7ff; } /* base blue for non-quoted text */
+.llm-heading { color: #ffd54a; } /* yellow headings */
+.llm-text { color: #6fb7ff; }
+.llm-quote { color: #9fe7a4; } /* light fir-green for quoted text */
+.raw-json-toggle { color: #d16c8c; } /* burgundy-pink link */

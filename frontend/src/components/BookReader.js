@@ -60,6 +60,25 @@ function BookReader() {
     }
   };
 
+  // Render text where substrings in double quotes are highlighted
+  const renderWithQuotes = (text) => {
+    if (text == null) return null;
+    const s = String(text);
+    const parts = s.split(/(\"[^\"]*\")/g);
+    return parts.map((part, idx) => {
+      if (!part) return null;
+      const isQuoted = part.startsWith('"') && part.endsWith('"');
+      if (isQuoted) {
+        return (
+          <span key={`q-${idx}`} className="llm-quote">{part}</span>
+        );
+      }
+      return (
+        <span key={`t-${idx}`} className="llm-text">{part}</span>
+      );
+    });
+  };
+
   const analyzeSentence = async (text) => {
     if (!text) return;
     setLlmLoading(true);
@@ -368,6 +387,33 @@ function BookReader() {
     return startParagraph + 5 > bookMeta.Max_Paragraph_Number;
   }, [bookMeta, startParagraph]);
 
+  // Lightweight JSON syntax highlighting for the raw LLM response
+  const syntaxHighlight = (obj) => {
+    try {
+      let json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+      json = json
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(
+          /(\"(?:[^"\\]|\\.)*\"\s*:)|(\"(?:[^"\\]|\\.)*\")|\b(true|false|null)\b|(-?\b\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?\b)/g,
+          (match, key, str, boolNull, number) => {
+            if (key) return `<span class="code-key">${key}</span>`; // keys ending with :
+            if (str) return `<span class="code-string">${str}</span>`;
+            if (boolNull) {
+              const cls = /true|false/.test(boolNull) ? 'code-boolean' : 'code-null';
+              return `<span class="${cls}">${boolNull}</span>`;
+            }
+            if (number) return `<span class="code-number">${number}</span>`;
+            return match;
+          }
+        );
+      return json;
+    } catch (_) {
+      return String(obj ?? '');
+    }
+  };
+
   // Refresh only lightweight stats (e.g., paragraphs_read_24h) after saving position
   const refreshBookStats = async () => {
     try {
@@ -589,41 +635,77 @@ function BookReader() {
                 <div className="alert alert-danger py-1 mb-2">{llmError}</div>
               )}
               {llmResult && (
-                <div className="llm-result" style={{ color: '#f8f9fa' }}>
+                <div className="llm-result llm-panel">
                   {llmResult.translation && (
-                    <div className="mb-2"><strong style={{ color: '#e9ecef' }}>Перевод:</strong> {llmResult.translation}</div>
+                    <div className="mb-2">
+                      <strong className="llm-heading">Перевод:</strong>{' '}
+                      {renderWithQuotes(llmResult.translation)}
+                    </div>
                   )}
                   {llmResult.grammar && (
-                    <div className="mb-2"><strong style={{ color: '#e9ecef' }}>Грамматика:</strong> {llmResult.grammar}</div>
+                    <div className="mb-2">
+                      <strong className="llm-heading">Грамматика:</strong>{' '}
+                      {renderWithQuotes(llmResult.grammar)}
+                    </div>
                   )}
                   {llmResult.idioms && (
                     <div className="mb-2">
-                      <strong style={{ color: '#e9ecef' }}>Идиомы:</strong>{' '}
+                      <strong className="llm-heading">Идиомы:</strong>{' '}
                       {Array.isArray(llmResult.idioms) ? (
                         <ul className="mb-0" style={{ color: '#f8f9fa' }}>
-                          {llmResult.idioms.map((it, i) => (
-                            <li key={i}>{String(it)}</li>
-                          ))}
+                          {llmResult.idioms.map((it, i) => {
+                            if (it && typeof it === 'object') {
+                              const idiom = it.idiom ?? it.phrase ?? it.expression ?? '';
+                              const translation = it.translation ?? it.meaning ?? '';
+                              const extra = it.note || it.explanation;
+                              return (
+                                <li key={i}>
+                                  <span className="badge bg-secondary me-2">{idiom || '—'}</span>
+                                  <span className="llm-text">{renderWithQuotes(translation || '—')}</span>
+                                  {extra ? <span className="text-muted"> — {extra}</span> : null}
+                                </li>
+                              );
+                            }
+                            return <li key={i}>{renderWithQuotes(String(it))}</li>;
+                          })}
                         </ul>
                       ) : (
-                        <span>{String(llmResult.idioms)}</span>
+                        <span className="llm-text">{renderWithQuotes(String(llmResult.idioms))}</span>
                       )}
                     </div>
                   )}
                   {llmResult.cultural_references && (
                     <div className="mb-2">
-                      <strong style={{ color: '#e9ecef' }}>Культурные отсылки:</strong>{' '}
+                      <strong className="llm-heading">Культурные отсылки:</strong>{' '}
                       {Array.isArray(llmResult.cultural_references) ? (
                         <ul className="mb-0" style={{ color: '#f8f9fa' }}>
-                          {llmResult.cultural_references.map((it, i) => (
-                            <li key={i}>{String(it)}</li>
-                          ))}
+                          {llmResult.cultural_references.map((it, i) => {
+                            if (it && typeof it === 'object') {
+                              const title = it.title || it.name || '';
+                              const desc = it.description || it.note || '';
+                              return (
+                                <li key={i}>
+                                  <span className="fw-semibold llm-text">{renderWithQuotes(title || '—')}</span>
+                                  {desc ? <span className="text-muted"> — {renderWithQuotes(desc)}</span> : null}
+                                </li>
+                              );
+                            }
+                            return <li key={i}>{renderWithQuotes(String(it))}</li>;
+                          })}
                         </ul>
                       ) : (
-                        <span>{String(llmResult.cultural_references)}</span>
+                        <span className="llm-text">{renderWithQuotes(String(llmResult.cultural_references))}</span>
                       )}
                     </div>
                   )}
+                  {/* Collapsible raw JSON with simple syntax highlighting */}
+                  <details className="mt-2">
+                    <summary className="opacity-75 raw-json-toggle" style={{ cursor: 'pointer' }}>Показать сырой ответ (JSON)</summary>
+                    <pre
+                      className="code-block mt-2"
+                      dangerouslySetInnerHTML={{ __html: syntaxHighlight(llmResult) }}
+                    />
+                  </details>
                 </div>
               )}
             </div>
