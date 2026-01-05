@@ -157,6 +157,10 @@ function LearnSyllables() {
 
   const handleNextSyllable = () => {
     if (currentSyllable) {
+      // Scroll page to the top when moving to the next word
+      try {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch {}
       fetchNextSyllable(currentSyllable.syllable_id);
     }
   };
