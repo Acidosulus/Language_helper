@@ -387,6 +387,15 @@ function BookReader() {
     return startParagraph + 5 > bookMeta.Max_Paragraph_Number;
   }, [bookMeta, startParagraph]);
 
+  // Ensure the page scrolls to the top whenever the reading window changes
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      if (typeof window !== 'undefined' && window.scrollTo) window.scrollTo(0, 0);
+    }
+  }, [startParagraph]);
+
   // Lightweight JSON syntax highlighting for the raw LLM response
   const syntaxHighlight = (obj) => {
     try {
