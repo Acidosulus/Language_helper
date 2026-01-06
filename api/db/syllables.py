@@ -187,9 +187,7 @@ def get_syllables_count_repeated_today(db: Session, username: str) -> int:
     )
 
 
-def get_user_syllables_in_text(
-    db: Session, text: str, username: str
-):
+def get_user_syllables_in_text(db: Session, text: str, username: str):
     """
     Возвращает список слов (Syllable) пользователя на изучении (ready == 0),
     которые встречаются в переданном тексте. Реляции paragraphs подгружаются

@@ -414,7 +414,10 @@ def text_to_speech(request: Request, payload: TTSIn):
 class LLMAnalyzeIn(BaseModel):
     text: str
 
+
 from mistralai import Mistral
+
+
 @app.post("/api/llm/analyze")
 async def analyze_text_with_llm(payload: LLMAnalyzeIn):
     """
@@ -422,9 +425,8 @@ async def analyze_text_with_llm(payload: LLMAnalyzeIn):
     и возвращает JSON-результат анализа.
     """
     with Mistral(
-            api_key='7KzulYHjsyUpnBJPn5sUQDZYEB7V4maR',
+        api_key="7KzulYHjsyUpnBJPn5sUQDZYEB7V4maR",
     ) as mistral:
-
         text = (payload.text or "").strip()
         if not text:
             raise HTTPException(status_code=400, detail="Text is empty")
@@ -456,9 +458,13 @@ async def analyze_text_with_llm(payload: LLMAnalyzeIn):
                 detail="LLM недоступен: ошибка сетевого подключения (DNS/интернет). Повторите позже.",
             )
         except httpx.TimeoutException:
-            raise HTTPException(status_code=504, detail="LLM не ответил вовремя")
+            raise HTTPException(
+                status_code=504, detail="LLM не ответил вовремя"
+            )
         except Exception as e:
-            raise HTTPException(status_code=502, detail=f"LLM upstream error: {e}")
+            raise HTTPException(
+                status_code=502, detail=f"LLM upstream error: {e}"
+            )
 
         # Попытка извлечь текст ответа и вернуть его как JSON
         try:
@@ -482,10 +488,12 @@ async def analyze_text_with_llm(payload: LLMAnalyzeIn):
 
             # Преобразуем в dict и возвращаем
             import json as _json
+
             return _json.loads(output_text)
         except Exception as e:
             # Если не удалось распарсить, вернем как 500 с текстом ошибки
             raise HTTPException(status_code=500, detail=f"LLM parse error: {e}")
+
 
 @app.post("/api/llm/analyze_local_ollama")
 async def analyze_text_with_llm_local_ollama(payload: LLMAnalyzeIn):
@@ -507,7 +515,12 @@ async def analyze_text_with_llm_local_ollama(payload: LLMAnalyzeIn):
     {{
         "translation": "перевод на русский",
         "grammar": "разбор грамматики исходной фразы на русском языке",
-        "idioms": ["список идиом с их переводом на русский язык"],
+        "idioms": [
+                    {
+                        "idiom":"идеома из предложеного предложения",
+                        "translation":"перевод и объяснение идиомы на русском языке"
+                    },
+        ],
         "cultural_references": "культурные отсылки на русском языке"
     }}
     """
@@ -527,7 +540,10 @@ async def analyze_text_with_llm_local_ollama(payload: LLMAnalyzeIn):
             # Ollama возвращает JSON-строку в поле 'response'
             return json.loads(data.get("response", "{}"))
     except httpx.ConnectError:
-        raise HTTPException(status_code=502, detail="Не удалось подключиться к Ollama. Проверь, запущен ли контейнер.")
+        raise HTTPException(
+            status_code=502,
+            detail="Не удалось подключиться к Ollama. Проверь, запущен ли контейнер.",
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"LLM error: {e}")
 
@@ -551,20 +567,26 @@ def get_user_syllables_in_text_endpoint(
     if not text:
         return []
 
-    return syllables.get_user_syllables_in_text(db=db, text=text, username=username)
+    return syllables.get_user_syllables_in_text(
+        db=db, text=text, username=username
+    )
 
 
 @app.get("/api/word_from_wooordhunt", response_model=dto.Syllable)
 def word_from_wooordhunt(request: Request, word: str) -> dto.Syllable:
-    lc_link = fr"https://wooordhunt.ru/word/{word}"
+    lc_link = rf"https://wooordhunt.ru/word/{word}"
     wh = parser.Wooordhunt(lc_link)
 
     # Собираем данные не из БД, но приводим их к DTO, совместимому с моделью Syllable
     examples_list = wh.get_examples() or []
     # Сконвертируем список примеров в строку для поля examples (Pydantic ожидает str)
-    examples_text = "\n".join(
-        f"{item.get('example','').strip()} — {item.get('translate','') or ''}" for item in examples_list
-    ) or None
+    examples_text = (
+        "\n".join(
+            f"{item.get('example', '').strip()} — {item.get('translate', '') or ''}"
+            for item in examples_list
+        )
+        or None
+    )
 
     # И одновременно подготовим paragraphs как структурированный список
     paragraphs = [
