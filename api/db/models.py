@@ -4,6 +4,7 @@ from sqlalchemy import (
     String,
     ForeignKey,
     TIMESTAMP,
+    BigInteger, LargeBinary, DateTime, func,
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
@@ -158,3 +159,61 @@ class ReadingJournal(Base):
     )
     id_paragraph: Mapped[int] = mapped_column(Integer, nullable=False)
     dt: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
+
+
+class Tile(Base):
+    __tablename__ = "hp_tiles"
+    tile_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    hyperlink: Mapped[str] = mapped_column(Text)
+    onclick: Mapped[str] = mapped_column(Text)
+    icon: Mapped[str] = mapped_column(Text)
+    color: Mapped[str] = mapped_column(Text)
+
+
+class Page(Base):
+    __tablename__ = "hp_pages"
+    page_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    page_name: Mapped[str] = mapped_column(Text, nullable=False)
+    index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    default: Mapped[int] = mapped_column(Integer, default=0, nullable=True)
+
+
+class PageRows(Base):
+    __tablename__ = "hp_page_rows"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    page_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    row_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    row_index: Mapped[int] = mapped_column(BigInteger, default=0)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class Row(Base):
+    __tablename__ = "hp_rows"
+    row_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    row_name: Mapped[str] = mapped_column(Text, nullable=False)
+    row_type: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    row_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+
+class RowTile(Base):
+    __tablename__ = "hp_row_tiles"
+    id: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=True
+    )
+    row_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    tile_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    tile_index: Mapped[int] = mapped_column(BigInteger, default=0)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class UserIcon(Base):
+    __tablename__ = "user_icons"
+
+    filename: Mapped[str] = mapped_column(Text, primary_key=True)
+    content_type: Mapped[str] = mapped_column(Text, nullable=False)
+    image: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

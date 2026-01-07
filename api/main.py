@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 
-from fastapi import FastAPI, Request, Form, Depends, HTTPException
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -8,7 +8,7 @@ from passlib.context import CryptContext
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
-from db import syllables, books, phrases, models, dto
+from db import syllables, books, phrases, models, dto, pages
 from pydantic import BaseModel
 from io import BytesIO
 import gtts
@@ -517,7 +517,7 @@ async def analyze_text_with_llm_local_ollama(payload: LLMAnalyzeIn):
         "grammar": "разбор грамматики исходной фразы на русском языке",
         "idioms": [
                     {
-                        "idiom":"идеома из предложеного предложения",
+        "idiom":"идеома из предложеного предложения",
                         "translation":"перевод и объяснение идиомы на русском языке"
                     },
         ],
@@ -614,13 +614,37 @@ def word_from_wooordhunt(request: Request, word: str) -> dto.Syllable:
     return syllable_dto
 
 
+@app.get("/api/start_page")
+async def start_page(request: Request, db: Session = Depends(get_db)):
+    """
+    Возвращает данные для построения структуры стартовой страницы пользователя
+    """
+
+    return await pages.get_start_page(db=db, user_name=request.session.get("user"))
+
+
+@app.get("/api/tile_icon")
+async def tile_icon(request: Request, file_name: str, db: Session = Depends(get_db)) -> Response:
+    content, content_type = await pages.get_icon(
+        db=db, file_name=file_name
+    )
+    """
+    Возвращает иконку для плитки по имени её файла
+    """
+
+    if not content:
+        raise HTTPException(status_code=404, detail="Icon not found")
+
+    return Response(content=content, media_type=content_type)
+
+
 if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8002,
         reload=False,
         ssl_certfile="localhost+3.pem",
         ssl_keyfile="localhost+3-key.pem",
