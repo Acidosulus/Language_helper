@@ -12,6 +12,7 @@ import { Nav, Navbar, Container, NavDropdown } from 'react-bootstrap';
 import { FaBook, FaList, FaGraduationCap, FaHome } from 'react-icons/fa';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import SearchBar from './components/SearchBar';
 import PhrasesList from './components/PhrasesList';
 import PhraseDetail from './components/PhraseDetail';
 import LearnPhrases from './components/LearnPhrases';
@@ -270,7 +271,11 @@ function Home() {
 
   return (
     <div className="container">
-      <h2>{data?.page_name || 'Стартовая страница'}</h2>
+      {/* Search Bar Section */}
+      <div className="mb-5">
+        <SearchBar />
+      </div>
+      
       <div className="start-grid">
         {rows.map((row) => {
           const tilesSorted = (row.tiles || []).slice().sort((a, b) => Number(a.tile_index) - Number(b.tile_index));
