@@ -94,7 +94,7 @@ async def get_start_page(db: Session, user_name: str):
 async def get_icon(
     db: Session,
     file_name: str,
-) -> tuple[bytes, str]:
+) -> tuple[bytes, str, "datetime | None"]:
     result = db.execute(
         select(models.UserIcon).where(models.UserIcon.filename == file_name)
     )
@@ -103,9 +103,11 @@ async def get_icon(
         return (
             icon.image,
             icon.content_type,
+            icon.created_at,
         )
     else:
         return (
+            None,
             None,
             None,
         )

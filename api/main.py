@@ -1,6 +1,8 @@
 from typing import Literal, Optional
 
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, Response
+from datetime import datetime, timezone
+import hashlib
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -624,7 +626,7 @@ async def start_page(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/api/tile_icon")
 async def tile_icon(request: Request, file_name: str, db: Session = Depends(get_db)) -> Response:
-    content, content_type = await pages.get_icon(
+    content, content_type, created_at = await pages.get_icon(
         db=db, file_name=file_name
     )
     """
@@ -634,7 +636,47 @@ async def tile_icon(request: Request, file_name: str, db: Session = Depends(get_
     if not content:
         raise HTTPException(status_code=404, detail="Icon not found")
 
-    return Response(content=content, media_type=content_type)
+    # Build strong ETag from content bytes
+    etag = 'W/"' + hashlib.sha256(content).hexdigest() + '"'
+
+    # Handle conditional request via If-None-Match
+    inm = request.headers.get("if-none-match")
+    if inm and inm == etag:
+        # Not modified, no body
+        return Response(status_code=304, headers={
+            "ETag": etag,
+            "Cache-Control": "public, max-age=86400",
+        })
+
+    headers = {
+        "ETag": etag,
+        "Cache-Control": "public, max-age=86400",
+    }
+
+    # Optionally include Last-Modified if available
+    if created_at and isinstance(created_at, datetime):
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        headers["Last-Modified"] = created_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+    # Fallback conditional with If-Modified-Since
+    ims = request.headers.get("if-modified-since")
+    if ims and "Last-Modified" in headers:
+        try:
+            # Compare parsed dates to decide 304
+            from email.utils import parsedate_to_datetime
+            ims_dt = parsedate_to_datetime(ims)
+            lm_dt = parsedate_to_datetime(headers["Last-Modified"])
+            if lm_dt <= ims_dt:
+                return Response(status_code=304, headers={
+                    "ETag": etag,
+                    "Cache-Control": headers["Cache-Control"],
+                    "Last-Modified": headers["Last-Modified"],
+                })
+        except Exception:
+            pass
+
+    return Response(content=content, media_type=content_type, headers=headers)
 
 
 if __name__ == "__main__":
