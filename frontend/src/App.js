@@ -259,41 +259,65 @@ function Home() {
   }
 
   const rows = (data?.rows || []).slice().sort((a, b) => Number(a.row_index) - Number(b.row_index));
+  // Determine a global number of columns so all rows have identical tile sizes
+  const globalCols = rows.reduce((max, row) => {
+    const tilesSorted = (row.tiles || []).slice();
+    const rowMax = tilesSorted.length
+      ? Math.max(...tilesSorted.map((t) => Number(t.tile_index) || 0))
+      : 0;
+    return Math.max(max, rowMax);
+  }, 1);
 
   return (
     <div className="container">
       <h2>{data?.page_name || 'Стартовая страница'}</h2>
       <div className="start-grid">
         {rows.map((row) => {
-          const tiles = (row.tiles || []).slice().sort((a, b) => Number(a.tile_index) - Number(b.tile_index));
+          const tilesSorted = (row.tiles || []).slice().sort((a, b) => Number(a.tile_index) - Number(b.tile_index));
+          const mapByIndex = new Map(tilesSorted.map((t) => [Number(t.tile_index), t]));
+
           return (
             <div className="start-row" key={row.row_id}>
-              {row.row_name ? <h4 className="row-title">{row.row_name}</h4> : null}
-              <div className="tiles">
-                {tiles.map((tile) => {
-                  const iconSrc = `${process.env.REACT_APP_API_URL}/tile_icon?file_name=${encodeURIComponent(tile.icon)}`;
-                  return (
-                    <a
-                      key={tile.tile_id}
-                      className="tile"
-                      href={tile.hyperlink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={tile.name}
-                      style={{ backgroundColor: tile.color || '#222' }}
-                    >
-                      <div className="tile-img-wrap">
-                        <img
-                          src={iconSrc}
-                          alt={tile.name}
-                          onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
-                        />
-                      </div>
-                      <div className="tile-name">{tile.name}</div>
-                    </a>
-                  );
-                })}
-              </div>
+              {(() => {
+                const gap = 12;
+                const styleVars = {
+                  ['--cols']: globalCols,
+                  ['--gap']: `${gap}px`,
+                  ['--tile-size']: `calc((100% - ${(globalCols - 1) * gap}px) / ${globalCols})`,
+                };
+                return (
+                  <div className="tiles" role="list" style={styleVars}>
+                    {Array.from({ length: globalCols }, (_, i) => i + 1).map((idx) => {
+                      const tile = mapByIndex.get(idx);
+                      if (!tile) {
+                        return <div key={`${row.row_id}-${idx}`} className="tile placeholder" aria-hidden="true" />;
+                      }
+                      const iconSrc = `${process.env.REACT_APP_API_URL}/tile_icon?file_name=${encodeURIComponent(tile.icon)}`;
+                      return (
+                        <a
+                          key={tile.tile_id}
+                          className="tile"
+                          href={tile.hyperlink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={tile.name}
+                          style={{ backgroundColor: tile.color || '#222' }}
+                          role="listitem"
+                        >
+                          <div className="tile-img-wrap">
+                            <img
+                              src={iconSrc}
+                              alt={tile.name}
+                              onError={(e) => { console.warn('Icon load failed:', iconSrc); }}
+                            />
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              
             </div>
           );
         })}
