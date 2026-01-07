@@ -41,7 +41,6 @@ pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 DATABASE_URL = (
     "postgresql+psycopg2://postgres:321@192.168.0.112/language"
-    # "postgresql+psycopg2://postgres:321@192.168.0.112/language_helper"
 )
 engine = create_engine(
     DATABASE_URL,
@@ -644,7 +643,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8002,
+        port=8000,
         reload=False,
         ssl_certfile="localhost+3.pem",
         ssl_keyfile="localhost+3-key.pem",

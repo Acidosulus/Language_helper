@@ -216,7 +216,90 @@ function App() {
 }
 
 function Home() {
-  return null;
+  const { user } = useAuth();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const load = async () => {
+      setError('');
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/start_page`, {
+          credentials: 'include',
+        });
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(text || `Failed to load start page: ${resp.status}`);
+        }
+        const json = await resp.json();
+        setData(json);
+      } catch (e) {
+        console.error(e);
+        setError('Не удалось загрузить стартовую страницу. Войдите в систему и попробуйте снова.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  if (loading) return <div className="loading">Загрузка...</div>;
+
+  if (error) {
+    return (
+      <div className="container">
+        <h2>Стартовая страница</h2>
+        <div className="error">{error}</div>
+        {!user && (
+          <p className="text-muted">Похоже, вы не авторизованы. Пожалуйста, выполните вход.</p>
+        )}
+      </div>
+    );
+  }
+
+  const rows = (data?.rows || []).slice().sort((a, b) => Number(a.row_index) - Number(b.row_index));
+
+  return (
+    <div className="container">
+      <h2>{data?.page_name || 'Стартовая страница'}</h2>
+      <div className="start-grid">
+        {rows.map((row) => {
+          const tiles = (row.tiles || []).slice().sort((a, b) => Number(a.tile_index) - Number(b.tile_index));
+          return (
+            <div className="start-row" key={row.row_id}>
+              {row.row_name ? <h4 className="row-title">{row.row_name}</h4> : null}
+              <div className="tiles">
+                {tiles.map((tile) => {
+                  const iconSrc = `${process.env.REACT_APP_API_URL}/tile_icon?file_name=${encodeURIComponent(tile.icon)}`;
+                  return (
+                    <a
+                      key={tile.tile_id}
+                      className="tile"
+                      href={tile.hyperlink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={tile.name}
+                      style={{ backgroundColor: tile.color || '#222' }}
+                    >
+                      <div className="tile-img-wrap">
+                        <img
+                          src={iconSrc}
+                          alt={tile.name}
+                          onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
+                        />
+                      </div>
+                      <div className="tile-name">{tile.name}</div>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function Login() {
