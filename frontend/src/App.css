@@ -236,6 +236,14 @@ main {
 /* Inner wrapper that is scaled so only the grid changes size */
 .start-grid-inner {
   will-change: transform;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Sizer reserves the correct layout height for scaled content */
+.start-grid-sizer {
+  width: 100%;
 }
 
 .start-row {

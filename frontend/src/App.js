@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { 
   BrowserRouter as Router, 
   Routes, 
@@ -227,6 +227,8 @@ function Home() {
     const val = parseFloat(saved);
     return Number.isFinite(val) && val > 0 ? val : 1;
   });
+  const innerRef = useRef(null);
+  const [gridHeight, setGridHeight] = useState(0);
 
   useEffect(() => {
     try {
@@ -238,10 +240,27 @@ function Home() {
 
   const changeScale = (delta) => {
     setGridScale((prev) => {
-      const next = Math.min(2, Math.max(0.6, Math.round((prev + delta) * 10) / 10));
+      const next = Math.min(2.5, Math.max(0.3, Math.round((prev + delta) * 10) / 10));
       return next;
     });
   };
+
+  // Measure inner grid height and reserve scaled space so container height matches visually scaled content
+  useEffect(() => {
+    const measure = () => {
+      const el = innerRef.current;
+      if (!el) return;
+      const h = el.offsetHeight || 0;
+      setGridHeight(h * gridScale);
+    };
+    // measure on mount, on scale change, and after data loads
+    const id = requestAnimationFrame(measure);
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener('resize', measure);
+    };
+  }, [gridScale, data]);
 
   useEffect(() => {
     const load = async () => {
@@ -298,8 +317,10 @@ function Home() {
       </div>
       
       <div className="start-grid">
+        <div className="start-grid-sizer" style={{ height: `${gridHeight}px` }} />
         <div
           className="start-grid-inner"
+          ref={innerRef}
           style={{
             transform: `scale(${gridScale})`,
             transformOrigin: 'top left',
