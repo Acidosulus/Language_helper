@@ -240,7 +240,7 @@ function Home() {
 
   const changeScale = (delta) => {
     setGridScale((prev) => {
-      const next = Math.min(2.5, Math.max(0.3, Math.round((prev + delta) * 10) / 10));
+      const next = Math.min(2.5, Math.max(0.1, Math.round((prev + delta) * 10) / 10));
       return next;
     });
   };
@@ -324,7 +324,7 @@ function Home() {
           style={{
             transform: `scale(${gridScale})`,
             transformOrigin: 'top left',
-            width: `${(100 / gridScale).toFixed(3)}%`,
+            width: '100%'
           }}
         >
         {rows.map((row) => {
