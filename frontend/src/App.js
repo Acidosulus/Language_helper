@@ -221,6 +221,27 @@ function Home() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Persisted zoom for start page grid only
+  const [gridScale, setGridScale] = useState(() => {
+    const saved = localStorage.getItem('startGridScale');
+    const val = parseFloat(saved);
+    return Number.isFinite(val) && val > 0 ? val : 1;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('startGridScale', String(gridScale));
+    } catch (e) {
+      // ignore storage errors
+    }
+  }, [gridScale]);
+
+  const changeScale = (delta) => {
+    setGridScale((prev) => {
+      const next = Math.min(2, Math.max(0.6, Math.round((prev + delta) * 10) / 10));
+      return next;
+    });
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -277,6 +298,14 @@ function Home() {
       </div>
       
       <div className="start-grid">
+        <div
+          className="start-grid-inner"
+          style={{
+            transform: `scale(${gridScale})`,
+            transformOrigin: 'top left',
+            width: `${(100 / gridScale).toFixed(3)}%`,
+          }}
+        >
         {rows.map((row) => {
           const tilesSorted = (row.tiles || []).slice().sort((a, b) => Number(a.tile_index) - Number(b.tile_index));
           const mapByIndex = new Map(tilesSorted.map((t) => [Number(t.tile_index), t]));
@@ -326,6 +355,26 @@ function Home() {
             </div>
           );
         })}
+        </div>
+        <div className="grid-zoom-controls" role="group" aria-label="Масштаб сетки">
+          <button
+            type="button"
+            className="zoom-btn"
+            onClick={() => changeScale(-0.1)}
+            title="Уменьшить масштаб"
+          >
+            −
+          </button>
+          <span className="zoom-label" aria-live="polite">{Math.round(gridScale * 100)}%</span>
+          <button
+            type="button"
+            className="zoom-btn"
+            onClick={() => changeScale(+0.1)}
+            title="Увеличить масштаб"
+          >
+            +
+          </button>
+        </div>
       </div>
     </div>
   );
