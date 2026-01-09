@@ -193,6 +193,27 @@ body {
   opacity: 0.7;
 }
 
+/* Compact 2x2 grid for search inputs */
+.search-container {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.search-group {
+  margin: 0; /* grid gap controls spacing */
+}
+
+.search-group .input-group {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .search-container {
+    grid-template-columns: 1fr; /* stack on small screens */
+  }
+}
+
 /* Main Content */
 main {
   flex: 1;

@@ -52,7 +52,7 @@ const SearchBar = () => {
         youtube: 'YouTube',
         wikipedia: 'Wikipedia'
       }).map(([key, label]) => (
-        <div key={key} className="search-group mb-3">
+        <div key={key} className="search-group">
           <InputGroup>
             <InputGroup.Text>{label}</InputGroup.Text>
             <FormControl
