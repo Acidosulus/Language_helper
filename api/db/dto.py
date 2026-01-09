@@ -121,3 +121,42 @@ class RepeatedToday(BaseModel):
 
 class SyllablesInTextIn(BaseModel):
     text: str
+
+
+# ----- Home page tiles DTOs -----
+class TileDTO(BaseModel):
+    tile_id: Optional[int] = None
+    name: str
+    hyperlink: Optional[str] = None
+    onclick: Optional[str] = None
+    icon: Optional[str] = None
+    color: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+
+
+class TileCreateIn(BaseModel):
+    row_id: int
+    tile_index: int = 1
+    name: str
+    hyperlink: Optional[str] = None
+    onclick: Optional[str] = None
+    icon: Optional[str] = None
+    color: Optional[str] = None
+
+
+class TileUpdateIn(BaseModel):
+    tile_id: int
+    name: Optional[str] = None
+    hyperlink: Optional[str] = None
+    onclick: Optional[str] = None
+    icon: Optional[str] = None
+    color: Optional[str] = None
+
+
+class RowTileOrderIn(BaseModel):
+    row_id: int
+    tile_id: int
+    tile_index: int

@@ -221,6 +221,19 @@ function Home() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editMode, setEditMode] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [formRowId, setFormRowId] = useState(null);
+  const [formTileIndex, setFormTileIndex] = useState(1);
+  const [formValues, setFormValues] = useState({
+    tile_id: null,
+    name: '',
+    hyperlink: '',
+    onclick: '',
+    icon: '',
+    color: '#222',
+  });
+  const [iconFile, setIconFile] = useState(null);
   // Persisted zoom for start page grid only
   const [gridScale, setGridScale] = useState(() => {
     const saved = localStorage.getItem('startGridScale');
@@ -285,6 +298,150 @@ function Home() {
     load();
   }, []);
 
+  const refreshStartPage = async () => {
+    try {
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/start_page`, { credentials: 'include' });
+      if (resp.ok) {
+        const json = await resp.json();
+        setData(json);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const openCreateForm = (rowId, index) => {
+    setFormRowId(rowId);
+    setFormTileIndex(index || 1);
+    setFormValues({ tile_id: null, name: '', hyperlink: '', onclick: '', icon: '', color: '#222' });
+    setIconFile(null);
+    setShowForm(true);
+  };
+
+  const openEditForm = (rowId, index, tile) => {
+    setFormRowId(rowId);
+    setFormTileIndex(index || Number(tile.tile_index) || 1);
+    setFormValues({
+      tile_id: Number(tile.tile_id),
+      name: tile.name || '',
+      hyperlink: tile.hyperlink || '',
+      onclick: tile.onclick || '',
+      icon: tile.icon || '',
+      color: tile.color || '#222',
+    });
+    setIconFile(null);
+    setShowForm(true);
+  };
+
+  const closeForm = () => setShowForm(false);
+
+  const submitForm = async (e) => {
+    e.preventDefault();
+    const api = process.env.REACT_APP_API_URL;
+    try {
+      // 1) Upload icon if selected
+      let uploadedIconName = formValues.icon;
+      if (iconFile) {
+        const fd = new FormData();
+        fd.append('file', iconFile);
+        fd.append('filename', iconFile.name);
+        const up = await fetch(`${api}/icons/upload`, { method: 'POST', credentials: 'include', body: fd });
+        if (!up.ok) throw new Error(await up.text());
+        const upres = await up.json();
+        uploadedIconName = upres.filename || iconFile.name;
+      }
+
+      if (formValues.tile_id) {
+        const resp = await fetch(`${api}/tiles`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tile_id: formValues.tile_id,
+            name: formValues.name,
+            hyperlink: formValues.hyperlink,
+            onclick: formValues.onclick,
+            icon: uploadedIconName,
+            color: formValues.color,
+          }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        await fetch(`${api}/tiles/order`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ row_id: formRowId, tile_id: formValues.tile_id, tile_index: formTileIndex }),
+        });
+      } else {
+        const resp = await fetch(`${api}/tiles`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            row_id: formRowId,
+            tile_index: formTileIndex,
+            name: formValues.name,
+            hyperlink: formValues.hyperlink,
+            onclick: formValues.onclick,
+            icon: uploadedIconName,
+            color: formValues.color,
+          }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+      }
+      setShowForm(false);
+      await refreshStartPage();
+    } catch (err) {
+      console.error('Save tile failed', err);
+      alert('Ошибка сохранения плитки');
+    }
+  };
+
+  const deleteTile = async (tileId) => {
+    if (!window.confirm('Удалить плитку?')) return;
+    try {
+      const api = process.env.REACT_APP_API_URL;
+      const resp = await fetch(`${api}/tiles/${tileId}`, { method: 'DELETE', credentials: 'include' });
+      if (!resp.ok) throw new Error(await resp.text());
+      await refreshStartPage();
+    } catch (e) {
+      console.error(e);
+      alert('Ошибка удаления плитки');
+    }
+  };
+
+  const addRow = async () => {
+    const name = prompt('Название ряда:', 'Новый ряд');
+    if (!name) return;
+    try {
+      const api = process.env.REACT_APP_API_URL;
+      const resp = await fetch(`${api}/rows`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ row_name: name, row_type: 0, row_index: 0, page_id: 1 })
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      await refreshStartPage();
+    } catch (e) {
+      console.error(e);
+      alert('Не удалось добавить ряд');
+    }
+  };
+
+  const removeRow = async (rowId) => {
+    if (!window.confirm('Удалить ряд и все его плитки?')) return;
+    try {
+      const api = process.env.REACT_APP_API_URL;
+      const resp = await fetch(`${api}/rows/${rowId}`, { method: 'DELETE', credentials: 'include' });
+      if (!resp.ok) throw new Error(await resp.text());
+      await refreshStartPage();
+    } catch (e) {
+      console.error(e);
+      alert('Не удалось удалить ряд');
+    }
+  };
+
   if (loading) return <div className="loading">Загрузка...</div>;
 
   if (error) {
@@ -317,6 +474,16 @@ function Home() {
       </div>
       
       <div className="start-grid">
+        <div className="start-grid-toolbar">
+          {user && (
+            <button className="nav-button" onClick={() => setEditMode(v => !v)}>
+              {editMode ? 'Готово' : 'Редактировать плитки'}
+            </button>
+          )}
+          {user && editMode && (
+            <button className="nav-button" onClick={addRow}>Добавить ряд</button>
+          )}
+        </div>
         <div className="start-grid-sizer" style={{ height: `${gridHeight}px` }} />
         <div
           className="start-grid-inner"
@@ -324,7 +491,8 @@ function Home() {
           style={{
             transform: `scale(${gridScale})`,
             transformOrigin: 'top left',
-            width: '100%'
+            width: '100%',
+            pointerEvents: showForm ? 'none' : 'auto'
           }}
         >
         {rows.map((row) => {
@@ -332,7 +500,28 @@ function Home() {
           const mapByIndex = new Map(tilesSorted.map((t) => [Number(t.tile_index), t]));
 
           return (
-            <div className="start-row" key={row.row_id}>
+            <div className="start-row" key={row.row_id}
+              onDragOver={(e) => { if (editMode) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
+              onDrop={(e) => {
+                if (!editMode) return;
+                try {
+                  const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
+                  if (!payload || !payload.tile_id) return;
+                  const targetIndex = Number(e.target?.dataset?.tileIndex) || 1;
+                  fetch(`${process.env.REACT_APP_API_URL}/tiles/order`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ row_id: Number(row.row_id), tile_id: Number(payload.tile_id), tile_index: targetIndex })
+                  }).then(() => refreshStartPage()).catch(console.error);
+                } catch (_) {}
+              }}
+            >
+              {editMode && (
+                <div className="row-actions">
+                  <button className="tile-action delete" title="Удалить ряд" onClick={() => removeRow(Number(row.row_id))}>Удалить ряд</button>
+                </div>
+              )}
               {(() => {
                 const gap = 8;
                 const styleVars = {
@@ -345,28 +534,67 @@ function Home() {
                     {Array.from({ length: globalCols }, (_, i) => i + 1).map((idx) => {
                       const tile = mapByIndex.get(idx);
                       if (!tile) {
-                        return <div key={`${row.row_id}-${idx}`} className="tile placeholder" aria-hidden="true" />;
+                        return (
+                          <div key={`${row.row_id}-${idx}`} className="tile placeholder" aria-hidden="true" data-tile-index={idx}
+                            onDragOver={(e) => { if (editMode) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
+                            onDrop={(e) => {
+                              if (!editMode) return;
+                              try {
+                                const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
+                                if (!payload || !payload.tile_id) return;
+                                fetch(`${process.env.REACT_APP_API_URL}/tiles/order`, {
+                                  method: 'POST',
+                                  credentials: 'include',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ row_id: Number(row.row_id), tile_id: Number(payload.tile_id), tile_index: idx })
+                                }).then(() => refreshStartPage()).catch(console.error);
+                              } catch (_) {}
+                            }}
+                          >
+                            {editMode && (
+                              <button
+                                type="button"
+                                className="tile-action add"
+                                title="Добавить плитку"
+                                onClick={() => openCreateForm(Number(row.row_id), idx)}
+                              >+
+                              </button>
+                            )}
+                          </div>
+                        );
                       }
                       const iconSrc = `${process.env.REACT_APP_API_URL}/tile_icon?file_name=${encodeURIComponent(tile.icon)}`;
                       return (
-                        <a
-                          key={tile.tile_id}
-                          className="tile"
-                          href={tile.hyperlink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={tile.name}
-                          style={{ backgroundColor: tile.color || '#222' }}
-                          role="listitem"
+                        <div key={tile.tile_id} className="tile" style={{ backgroundColor: tile.color || '#222' }} title={tile.name} role="listitem" draggable={editMode}
+                          onDragStart={(e) => {
+                            if (!editMode) return;
+                            e.dataTransfer.setData('text/plain', JSON.stringify({ tile_id: Number(tile.tile_id) }));
+                            e.dataTransfer.effectAllowed = 'move';
+                          }}
+                          data-tile-index={idx}
                         >
-                          <div className="tile-img-wrap">
-                            <img
-                              src={iconSrc}
-                              alt={tile.name}
-                              onError={(e) => { console.warn('Icon load failed:', iconSrc); }}
-                            />
-                          </div>
-                        </a>
+                          <a
+                            href={tile.hyperlink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="tile-link"
+                            aria-label={tile.name}
+                          >
+                            <div className="tile-img-wrap">
+                              <img
+                                src={iconSrc}
+                                alt={tile.name}
+                                onError={() => { /* ignore */ }}
+                              />
+                            </div>
+                          </a>
+                          {editMode && (
+                            <div className="tile-actions">
+                              <button className="tile-action edit" title="Изменить" onClick={() => openEditForm(Number(row.row_id), idx, tile)}>✎</button>
+                              <button className="tile-action delete" title="Удалить" onClick={() => deleteTile(Number(tile.tile_id))}>✕</button>
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -397,6 +625,47 @@ function Home() {
           </button>
         </div>
       </div>
+      {showForm && (
+        <div className="lh-modal-backdrop" onClick={closeForm}>
+          <div className="lh-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>{formValues.tile_id ? 'Изменить плитку' : 'Добавить плитку'}</h3>
+            <form onSubmit={submitForm} className="tile-form">
+              <label>
+                Заголовок
+                <input type="text" value={formValues.name} onChange={(e) => setFormValues(v => ({ ...v, name: e.target.value }))} required />
+              </label>
+              <label>
+                Ссылка
+                <input type="url" value={formValues.hyperlink} onChange={(e) => setFormValues(v => ({ ...v, hyperlink: e.target.value }))} />
+              </label>
+              <label>
+                OnClick (JS)
+                <input type="text" value={formValues.onclick} onChange={(e) => setFormValues(v => ({ ...v, onclick: e.target.value }))} />
+              </label>
+              <label>
+                Имя иконки (filename)
+                <input type="text" value={formValues.icon} onChange={(e) => setFormValues(v => ({ ...v, icon: e.target.value }))} placeholder="example.png" />
+              </label>
+              <label>
+                Загрузить иконку
+                <input type="file" accept="image/*" onChange={(e) => setIconFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)} />
+              </label>
+              <label>
+                Цвет плитки
+                <input type="color" value={formValues.color} onChange={(e) => setFormValues(v => ({ ...v, color: e.target.value }))} />
+              </label>
+              <label>
+                Позиция в ряду
+                <input type="number" min="1" value={formTileIndex} onChange={(e) => setFormTileIndex(Number(e.target.value) || 1)} />
+              </label>
+              <div className="modal-actions">
+                <button type="button" onClick={closeForm}>Отмена</button>
+                <button type="submit" className="nav-button">Сохранить</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

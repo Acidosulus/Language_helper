@@ -679,6 +679,168 @@ async def tile_icon(request: Request, file_name: str, db: Session = Depends(get_
     return Response(content=content, media_type=content_type, headers=headers)
 
 
+# ----- Tiles CRUD -----
+@app.post("/api/tiles", response_model=dto.TileDTO)
+def create_tile_endpoint(
+    request: Request,
+    payload: dto.TileCreateIn,
+    db: Session = Depends(get_db_autocommit),
+):
+    username = request.session.get("user")
+    if not username:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+    try:
+        tile = pages.create_tile(
+            db,
+            username,
+            row_id=payload.row_id,
+            tile_index=payload.tile_index,
+            name=payload.name,
+            hyperlink=payload.hyperlink,
+            onclick=payload.onclick,
+            icon=payload.icon,
+            color=payload.color,
+        )
+        return dto.TileDTO.model_validate(tile)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.put("/api/tiles", response_model=dto.TileDTO)
+def update_tile_endpoint(
+    request: Request,
+    payload: dto.TileUpdateIn,
+    db: Session = Depends(get_db_autocommit),
+):
+    username = request.session.get("user")
+    if not username:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+    try:
+        tile = pages.update_tile(
+            db,
+            username,
+            tile_id=payload.tile_id,
+            name=payload.name,
+            hyperlink=payload.hyperlink,
+            onclick=payload.onclick,
+            icon=payload.icon,
+            color=payload.color,
+        )
+        return dto.TileDTO.model_validate(tile)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete("/api/tiles/{tile_id}")
+def delete_tile_endpoint(
+    request: Request,
+    tile_id: int,
+    db: Session = Depends(get_db_autocommit),
+):
+    username = request.session.get("user")
+    if not username:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+    try:
+        pages.delete_tile(db, username, tile_id=tile_id)
+        return {"status": "ok"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ----- Rows management -----
+class RowCreateIn(BaseModel):
+    row_name: str
+    row_type: Optional[int] = 0
+    row_index: Optional[int] = 0
+    page_id: Optional[int] = 1
+
+
+@app.post("/api/rows")
+def create_row_endpoint(
+    request: Request,
+    payload: RowCreateIn,
+    db: Session = Depends(get_db_autocommit),
+):
+    username = request.session.get("user")
+    if not username:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+    try:
+        row = pages.create_row(
+            db,
+            username,
+            row_name=payload.row_name,
+            row_type=payload.row_type or 0,
+            row_index=payload.row_index or 0,
+            page_id=payload.page_id or 1,
+        )
+        return {
+            "row_id": row.row_id,
+            "row_name": row.row_name,
+            "row_type": row.row_type,
+            "row_index": row.row_index,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete("/api/rows/{row_id}")
+def delete_row_endpoint(
+    request: Request,
+    row_id: int,
+    db: Session = Depends(get_db_autocommit),
+):
+    username = request.session.get("user")
+    if not username:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+    try:
+        pages.delete_row(db, username, row_id=row_id)
+        return {"status": "ok"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ----- Icon upload -----
+@app.post("/api/icons/upload")
+async def upload_icon(
+    request: Request,
+    db: Session = Depends(get_db_autocommit),
+):
+    username = request.session.get("user")
+    if not username:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+    form = await request.form()
+    file = form.get("file")
+    if not file:
+        raise HTTPException(status_code=400, detail="file is required")
+    filename = form.get("filename") or getattr(file, "filename", None) or "icon.bin"
+    content_type = getattr(file, "content_type", None) or "application/octet-stream"
+    data = await file.read()
+    pages.save_icon(db, filename=filename, content_type=content_type, data=data)
+    return {"status": "ok", "filename": filename}
+
+
+@app.post("/api/tiles/order")
+def set_tile_order_endpoint(
+    request: Request,
+    payload: dto.RowTileOrderIn,
+    db: Session = Depends(get_db_autocommit),
+):
+    username = request.session.get("user")
+    if not username:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+    try:
+        pages.set_row_tile_index(
+            db,
+            username,
+            row_id=payload.row_id,
+            tile_id=payload.tile_id,
+            tile_index=payload.tile_index,
+        )
+        return {"status": "ok"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
 

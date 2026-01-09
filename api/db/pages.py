@@ -111,3 +111,135 @@ async def get_icon(
             None,
             None,
         )
+
+
+# ----- Mutations for tiles -----
+def create_tile(db: Session, user_name: str, *, row_id: int, tile_index: int, name: str, hyperlink: str | None, onclick: str | None, icon: str | None, color: str | None) -> models.Tile:
+    user_id = users.get_user_id(db, user_name)
+    if not user_id:
+        raise ValueError("User not found")
+
+    # Create tile record
+    tile = models.Tile(
+        user_id=user_id,
+        name=name,
+        hyperlink=hyperlink,
+        onclick=onclick,
+        icon=icon,
+        color=color,
+    )
+    db.add(tile)
+    db.flush()  # get tile_id
+
+    # Attach to row with specified index
+    rt = models.RowTile(
+        row_id=row_id,
+        tile_id=tile.tile_id,
+        tile_index=tile_index,
+        user_id=user_id,
+    )
+    db.add(rt)
+    return tile
+
+
+def update_tile(db: Session, user_name: str, *, tile_id: int, name: str | None = None, hyperlink: str | None = None, onclick: str | None = None, icon: str | None = None, color: str | None = None) -> models.Tile:
+    user_id = users.get_user_id(db, user_name)
+    if not user_id:
+        raise ValueError("User not found")
+    tile = db.query(models.Tile).filter(models.Tile.tile_id == tile_id, models.Tile.user_id == user_id).first()
+    if not tile:
+        raise ValueError("Tile not found")
+    if name is not None:
+        tile.name = name
+    if hyperlink is not None:
+        tile.hyperlink = hyperlink
+    if onclick is not None:
+        tile.onclick = onclick
+    if icon is not None:
+        tile.icon = icon
+    if color is not None:
+        tile.color = color
+    db.add(tile)
+    return tile
+
+
+def delete_tile(db: Session, user_name: str, *, tile_id: int) -> None:
+    user_id = users.get_user_id(db, user_name)
+    if not user_id:
+        raise ValueError("User not found")
+    # Remove row links first
+    db.query(models.RowTile).filter(models.RowTile.user_id == user_id, models.RowTile.tile_id == tile_id).delete()
+    # Remove tile
+    db.query(models.Tile).filter(models.Tile.user_id == user_id, models.Tile.tile_id == tile_id).delete()
+
+
+def set_row_tile_index(db: Session, user_name: str, *, row_id: int, tile_id: int, tile_index: int) -> None:
+    user_id = users.get_user_id(db, user_name)
+    if not user_id:
+        raise ValueError("User not found")
+    # Ensure a tile belongs to only one row for this user: delete other links
+    db.query(models.RowTile).filter(
+        models.RowTile.user_id == user_id,
+        models.RowTile.tile_id == tile_id,
+        models.RowTile.row_id != row_id,
+    ).delete()
+
+    rt = (
+        db.query(models.RowTile)
+        .filter(
+            models.RowTile.user_id == user_id,
+            models.RowTile.row_id == row_id,
+            models.RowTile.tile_id == tile_id,
+        )
+        .first()
+    )
+    if not rt:
+        rt = models.RowTile(
+            row_id=row_id,
+            tile_id=tile_id,
+            user_id=user_id,
+            tile_index=tile_index,
+        )
+        db.add(rt)
+    else:
+        rt.tile_index = tile_index
+        db.add(rt)
+
+
+def create_row(db: Session, user_name: str, *, row_name: str, row_type: int = 0, row_index: int = 0, page_id: int = 1) -> models.Row:
+    user_id = users.get_user_id(db, user_name)
+    if not user_id:
+        raise ValueError("User not found")
+    # Create row
+    row = models.Row(user_id=user_id, row_name=row_name, row_type=row_type, row_index=row_index)
+    db.add(row)
+    db.flush()
+    # Attach to page
+    pr = models.PageRows(page_id=page_id, row_id=row.row_id, row_index=row_index, user_id=user_id)
+    db.add(pr)
+    return row
+
+
+def delete_row(db: Session, user_name: str, *, row_id: int) -> None:
+    user_id = users.get_user_id(db, user_name)
+    if not user_id:
+        raise ValueError("User not found")
+    # Remove all tiles bindings inside this row
+    db.query(models.RowTile).filter(models.RowTile.user_id == user_id, models.RowTile.row_id == row_id).delete()
+    # Remove page-row mapping
+    db.query(models.PageRows).filter(models.PageRows.user_id == user_id, models.PageRows.row_id == row_id).delete()
+    # Remove the row
+    db.query(models.Row).filter(models.Row.user_id == user_id, models.Row.row_id == row_id).delete()
+
+
+def save_icon(db: Session, *, filename: str, content_type: str, data: bytes) -> models.UserIcon:
+    # Upsert by filename
+    existing = db.execute(select(models.UserIcon).where(models.UserIcon.filename == filename)).scalar_one_or_none()
+    if existing:
+        existing.content_type = content_type
+        existing.image = data
+        db.add(existing)
+        return existing
+    icon = models.UserIcon(filename=filename, content_type=content_type, image=data)
+    db.add(icon)
+    return icon

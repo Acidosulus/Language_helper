@@ -10,6 +10,93 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.row-actions {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+
+/* Modal for tile form (legacy class kept) */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000; /* ensure above transformed content */
+}
+
+.modal {
+  background: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 16px;
+  width: 520px;
+  max-width: calc(100% - 24px);
+  color: #e0e0e0;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+/* New prefixed classes to avoid any conflicts */
+.lh-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  pointer-events: auto;
+}
+
+.lh-modal {
+  background: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 16px;
+  width: 520px;
+  max-width: calc(100% - 24px);
+  color: #e0e0e0;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  z-index: 10001;
+}
+
+.tile-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.tile-form label {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  color: #e0e0e0;
+}
+
+.tile-form input[type="text"],
+.tile-form input[type="url"],
+.tile-form input[type="number"],
+.tile-form input[type="color"] {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  color: #e0e0e0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
 body {
   background-color: #121212;
   color: #f0f0f0; /* lighter default text for higher contrast */
@@ -239,12 +326,19 @@ main {
   position: relative; /* for positioning zoom controls */
 }
 
+.start-grid-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* Inner wrapper that is scaled so only the grid changes size */
 .start-grid-inner {
   will-change: transform;
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 1; /* keep grid below overlays */
 }
 
 /* Sizer reserves the correct layout height for scaled content */
@@ -257,6 +351,7 @@ main {
   border: 1px solid #333;
   border-radius: 8px;
   padding: 0.5rem; /* less vertical padding */
+  position: relative;
 }
 
 /* hide row titles entirely */
@@ -320,6 +415,47 @@ main {
 .tile.placeholder {
   background: transparent;
   border: 1px dashed #333;
+}
+
+.tile-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 6px;
+}
+
+.tile-action {
+  background: rgba(0,0,0,0.45);
+  color: #e0e0e0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  line-height: 26px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.tile-action.add {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(76, 175, 80, 0.15);
+  border-color: #4caf50;
+  color: #c8e6c9;
+}
+
+.tile-action.add:hover {
+  background: rgba(76, 175, 80, 0.25);
+}
+
+.tile-action.edit:hover,
+.tile-action.delete:hover {
+  background: rgba(0,0,0,0.65);
 }
 
 /* Zoom controls for the start grid */
