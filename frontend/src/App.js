@@ -310,9 +310,9 @@ function Home() {
   }, 1);
 
   return (
-    <div className="container">
+    <div className="container home-container">
       {/* Search Bar Section */}
-      <div className="mb-5">
+      <div className="home-top">
         <SearchBar />
       </div>
       
@@ -334,7 +334,7 @@ function Home() {
           return (
             <div className="start-row" key={row.row_id}>
               {(() => {
-                const gap = 12;
+                const gap = 8;
                 const styleVars = {
                   ['--cols']: globalCols,
                   ['--gap']: `${gap}px`,
