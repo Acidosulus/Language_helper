@@ -473,16 +473,9 @@ function Home() {
         <SearchBar />
       </div>
       
-      <div className="start-grid">
+      <div className="start-grid" style={{ ['--cols']: globalCols, ['--gap']: '8px' }}>
         <div className="start-grid-toolbar">
-          {user && (
-            <button className="nav-button" onClick={() => setEditMode(v => !v)}>
-              {editMode ? 'Готово' : 'Редактировать плитки'}
-            </button>
-          )}
-          {user && editMode && (
-            <button className="nav-button" onClick={addRow}>Добавить ряд</button>
-          )}
+          {/* Controls moved to bottom action bar */}
         </div>
         <div className="start-grid-sizer" style={{ height: `${gridHeight}px` }} />
         <div
@@ -517,6 +510,7 @@ function Home() {
                 } catch (_) {}
               }}
             >
+              {/* Row action is moved to the right side outside tiles to avoid overlap */}
               {editMode && (
                 <div className="row-actions">
                   <button className="tile-action delete" title="Удалить ряд" onClick={() => removeRow(Number(row.row_id))}>Удалить ряд</button>
@@ -624,6 +618,22 @@ function Home() {
             +
           </button>
         </div>
+        {/* Bottom action bar for start grid controls (placed relative to grid) */}
+        {user && (
+          <div className="start-grid-bottombar" role="toolbar" aria-label="Действия стартовой страницы">
+            <div className="bar-inner">
+              {!editMode && (
+                <button className="nav-button" onClick={() => setEditMode(true)}>Редактировать плитки</button>
+              )}
+              {editMode && (
+                <>
+                  <button className="nav-button" onClick={addRow}>Добавить ряд</button>
+                  <button className="nav-button secondary" onClick={() => setEditMode(false)}>Отменить</button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       {showForm && (
         <div className="lh-modal-backdrop" onClick={closeForm}>

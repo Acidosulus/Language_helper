@@ -12,8 +12,10 @@
 
 .row-actions {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  top: 50%;
+  left: auto;
+  right: -56px; /* move outside to the right of the row */
+  transform: translateY(-50%);
   display: flex;
   gap: 6px;
   z-index: 2;
@@ -323,13 +325,69 @@ main {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  position: relative; /* for positioning zoom controls */
+  position: relative; /* for positioning zoom controls and bottom bar */
 }
 
 .start-grid-toolbar {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* Bottom action bar for start grid controls */
+.start-grid-bottombar {
+  /* place relative to grid, push below the last row by ~1 tile height */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(-8px - ( (100% - ( (var(--cols, 1) - 1) * var(--gap, 8px) )) / var(--cols, 1) ));
+  display: flex;
+  justify-content: center;
+  z-index: 1000;
+  pointer-events: none; /* container ignores clicks, inner handles */
+}
+
+.start-grid-bottombar .bar-inner {
+  pointer-events: auto;
+  display: inline-flex;
+  gap: 8px;
+  background: rgba(30, 30, 30, 0.9);
+  border: 1px solid #444;
+  border-radius: 10px;
+  padding: 8px 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  backdrop-filter: blur(2px);
+}
+
+/* Generic nav-style button */
+.nav-button {
+  color: #4caf50;
+  text-decoration: none;
+  font-size: 0.95rem;
+  background: rgba(76, 175, 80, 0.12);
+  border: 1px solid rgba(76, 175, 80, 0.35);
+  border-radius: 6px;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-button:hover {
+  background: rgba(76, 175, 80, 0.22);
+  border-color: #4caf50;
+  color: #64ffda;
+}
+
+.nav-button.secondary {
+  color: #e0e0e0;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: #555;
+}
+
+.nav-button.secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: #777;
 }
 
 /* Inner wrapper that is scaled so only the grid changes size */
@@ -462,7 +520,8 @@ main {
 .grid-zoom-controls {
   position: absolute;
   right: 10px;
-  bottom: 8px;
+  /* push below the grid by ~1 tile height */
+  bottom: calc(-8px - ( (100% - ( (var(--cols, 1) - 1) * var(--gap, 8px) )) / var(--cols, 1) ));
   display: inline-flex;
   align-items: center;
   gap: 8px;
