@@ -3,12 +3,13 @@ from typing import Literal, Optional
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, Response
 from datetime import datetime, timezone
 import hashlib
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from passlib.context import CryptContext
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
+from sqlalchemy.exc import OperationalError, DBAPIError
 
 from db import syllables, books, phrases, models, dto, pages
 from pydantic import BaseModel
@@ -48,6 +49,10 @@ engine = create_engine(
     DATABASE_URL,
     echo=False,
     future=True,
+    # Включаем pre-ping, чтобы автоматически восстанавливать разорванные соединения из пула
+    pool_pre_ping=True,
+    # Периодическая переинициализация соединений, чтобы избегать тайм-аутов от сервера БД
+    pool_recycle=1800,
 )
 SessionLocal = sessionmaker(
     bind=engine,
@@ -71,11 +76,55 @@ def get_db_autocommit():
     try:
         yield db
         db.commit()
-    except:
+    except Exception:
+        # В случае ошибки откатываем транзакцию и пробрасываем дальше
         db.rollback()
         raise
     finally:
         db.close()
+
+
+# Глобальные обработчики ошибок БД, чтобы не отдавать 500 и стек-трейс клиенту
+@app.exception_handler(OperationalError)
+async def operational_error_handler(request: Request, exc: OperationalError):
+    # При операционных ошибках (соединение разорвано и т.п.) сбрасываем пул
+    try:
+        engine.dispose()
+    except Exception:
+        # Игнорируем ошибки утилизации пула – это best-effort
+        pass
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "База данных временно недоступна. Повторите попытку позднее.",
+            "error": "operational_error",
+        },
+    )
+
+
+@app.exception_handler(DBAPIError)
+async def dbapi_error_handler(request: Request, exc: DBAPIError):
+    # Если соединение признано недействительным – возвращаем 503
+    if getattr(exc, "connection_invalidated", False):
+        try:
+            engine.dispose()
+        except Exception:
+            pass
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": "База данных недоступна (потеряно соединение). Повторите попытку.",
+                "error": "db_connection_invalidated",
+            },
+        )
+    # Прочие ошибки DBAPI считаем ошибкой сервера
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Ошибка при обращении к базе данных.",
+            "error": "db_error",
+        },
+    )
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)):
