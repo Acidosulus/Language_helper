@@ -98,8 +98,8 @@ function SyllablesList() {
             className="form-control"
             placeholder="Введите часть слова..."
             value={wordPart}
-            onChange={(e) => setWordPart(e.target.value)}
-            style={{ maxWidth: 320 }}
+            onChange={(e) => setWordPart(e.target.value.toLowerCase())}
+            style={{ maxWidth: 320, textTransform: 'lowercase' }}
           />
           <button className="btn btn-primary" onClick={onSearchClick} disabled={isSearching}>
             Искать
