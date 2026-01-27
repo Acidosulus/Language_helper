@@ -6,7 +6,7 @@ const searchEngines = {
   google: 'https://www.google.com/search?q=',
   yandex: 'https://yandex.com/search/?text=',
   youtube: 'https://www.youtube.com/results?search_query=',
-  wikipedia: 'https://en.wikipedia.org/w/index.php?search='
+  wikipedia: 'https://ru.wikipedia.org/w/index.php?search='
 };
 
 const SearchBar = () => {
