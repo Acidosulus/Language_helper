@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy.orm import noload
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from db import models
@@ -30,7 +29,9 @@ async def get_phrase_by_id(db: AsyncSession, id_phrase: int, username: str):
     return result.scalar_one_or_none()
 
 
-async def set_phrase_status(db: AsyncSession, id_phrase: int, status: int, username: str):
+async def set_phrase_status(
+    db: AsyncSession, id_phrase: int, status: int, username: str
+):
     result = await db.execute(
         select(models.Phrase)
         .join(models.User)
@@ -58,7 +59,9 @@ async def set_phrase_as_viewed(db: AsyncSession, id_phrase: int, username: str):
         await db.flush()
 
 
-async def get_next_phrase(db: AsyncSession, current_phrase_id: int, username: str):
+async def get_next_phrase(
+    db: AsyncSession, current_phrase_id: int, username: str
+):
     if current_phrase_id:
         await set_phrase_as_viewed(db, current_phrase_id, username)
 
@@ -104,7 +107,9 @@ async def save_phrase(db: AsyncSession, phrase: models.Phrase, username: str):
     return phrase_db
 
 
-async def get_phrases_count_repeated_today(db: AsyncSession, username: str) -> int:
+async def get_phrases_count_repeated_today(
+    db: AsyncSession, username: str
+) -> int:
     user_id = await users.aget_user_id(db, username)
     result = await db.execute(
         select(func.count(models.Phrase.id_phrase))

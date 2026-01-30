@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import re
 
-from sqlalchemy.orm import selectinload, noload
+from sqlalchemy.orm import selectinload
 from sqlalchemy import func, select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from db import models, dto
@@ -113,7 +113,9 @@ async def save_syllable(
     return syllable_db
 
 
-async def set_syllable_as_viewed(db: AsyncSession, sillable_id: int, username: str):
+async def set_syllable_as_viewed(
+    db: AsyncSession, sillable_id: int, username: str
+):
     result = await db.execute(
         select(models.Syllable)
         .join(models.User)
@@ -174,7 +176,9 @@ async def get_syllables_by_word_part(
     return result.scalars().all()
 
 
-async def get_syllables_count_repeated_today(db: AsyncSession, username: str) -> int:
+async def get_syllables_count_repeated_today(
+    db: AsyncSession, username: str
+) -> int:
     user_id = await users.aget_user_id(db, username)
     result = await db.execute(
         select(func.count(models.Syllable.syllable_id))
@@ -187,7 +191,9 @@ async def get_syllables_count_repeated_today(db: AsyncSession, username: str) ->
     return result.scalar_one()
 
 
-async def get_user_syllables_in_text(db: AsyncSession, text: str, username: str):
+async def get_user_syllables_in_text(
+    db: AsyncSession, text: str, username: str
+):
     """
     Возвращает список слов (Syllable) пользователя на изучении (ready == 0),
     которые встречаются в переданном тексте. Реляции paragraphs подгружаются
@@ -208,8 +214,7 @@ async def get_user_syllables_in_text(db: AsyncSession, text: str, username: str)
 
     result = await db.execute(
         select(models.Syllable)
-        .join(models.User)
-        .where(models.User.user_id == user_id)
+        .where(models.Syllable.user_id == user_id)
         .where(models.Syllable.ready == 0)
         .where(func.lower(models.Syllable.word).in_(tokens))
         .options(selectinload(models.Syllable.paragraphs))

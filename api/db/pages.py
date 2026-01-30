@@ -115,7 +115,18 @@ async def get_icon(
 
 
 # ----- Mutations for tiles -----
-async def create_tile(db: AsyncSession, user_name: str, *, row_id: int, tile_index: int, name: str, hyperlink: str | None, onclick: str | None, icon: str | None, color: str | None) -> models.Tile:
+async def create_tile(
+    db: AsyncSession,
+    user_name: str,
+    *,
+    row_id: int,
+    tile_index: int,
+    name: str,
+    hyperlink: str | None,
+    onclick: str | None,
+    icon: str | None,
+    color: str | None,
+) -> models.Tile:
     user_id = await users.aget_user_id(db, user_name)
     if not user_id:
         raise ValueError("User not found")
@@ -141,12 +152,24 @@ async def create_tile(db: AsyncSession, user_name: str, *, row_id: int, tile_ind
     return tile
 
 
-async def update_tile(db: AsyncSession, user_name: str, *, tile_id: int, name: str | None = None, hyperlink: str | None = None, onclick: str | None = None, icon: str | None = None, color: str | None = None) -> models.Tile:
+async def update_tile(
+    db: AsyncSession,
+    user_name: str,
+    *,
+    tile_id: int,
+    name: str | None = None,
+    hyperlink: str | None = None,
+    onclick: str | None = None,
+    icon: str | None = None,
+    color: str | None = None,
+) -> models.Tile:
     user_id = await users.aget_user_id(db, user_name)
     if not user_id:
         raise ValueError("User not found")
     res = await db.execute(
-        select(models.Tile).where(models.Tile.tile_id == tile_id, models.Tile.user_id == user_id)
+        select(models.Tile).where(
+            models.Tile.tile_id == tile_id, models.Tile.user_id == user_id
+        )
     )
     tile = res.scalar_one_or_none()
     if not tile:
@@ -165,19 +188,32 @@ async def update_tile(db: AsyncSession, user_name: str, *, tile_id: int, name: s
     return tile
 
 
-async def delete_tile(db: AsyncSession, user_name: str, *, tile_id: int) -> None:
+async def delete_tile(
+    db: AsyncSession, user_name: str, *, tile_id: int
+) -> None:
     user_id = await users.aget_user_id(db, user_name)
     if not user_id:
         raise ValueError("User not found")
     await db.execute(
-        delete(models.RowTile).where(models.RowTile.user_id == user_id, models.RowTile.tile_id == tile_id)
+        delete(models.RowTile).where(
+            models.RowTile.user_id == user_id, models.RowTile.tile_id == tile_id
+        )
     )
     await db.execute(
-        delete(models.Tile).where(models.Tile.user_id == user_id, models.Tile.tile_id == tile_id)
+        delete(models.Tile).where(
+            models.Tile.user_id == user_id, models.Tile.tile_id == tile_id
+        )
     )
 
 
-async def set_row_tile_index(db: AsyncSession, user_name: str, *, row_id: int, tile_id: int, tile_index: int) -> None:
+async def set_row_tile_index(
+    db: AsyncSession,
+    user_name: str,
+    *,
+    row_id: int,
+    tile_id: int,
+    tile_index: int,
+) -> None:
     user_id = await users.aget_user_id(db, user_name)
     if not user_id:
         raise ValueError("User not found")
@@ -211,14 +247,29 @@ async def set_row_tile_index(db: AsyncSession, user_name: str, *, row_id: int, t
         db.add(rt)
 
 
-async def create_row(db: AsyncSession, user_name: str, *, row_name: str, row_type: int = 0, row_index: int = 0, page_id: int = 1) -> models.Row:
+async def create_row(
+    db: AsyncSession,
+    user_name: str,
+    *,
+    row_name: str,
+    row_type: int = 0,
+    row_index: int = 0,
+    page_id: int = 1,
+) -> models.Row:
     user_id = await users.aget_user_id(db, user_name)
     if not user_id:
         raise ValueError("User not found")
-    row = models.Row(user_id=user_id, row_name=row_name, row_type=row_type, row_index=row_index)
+    row = models.Row(
+        user_id=user_id,
+        row_name=row_name,
+        row_type=row_type,
+        row_index=row_index,
+    )
     db.add(row)
     await db.flush()
-    pr = models.PageRows(page_id=page_id, row_id=row.row_id, row_index=row_index, user_id=user_id)
+    pr = models.PageRows(
+        page_id=page_id, row_id=row.row_id, row_index=row_index, user_id=user_id
+    )
     db.add(pr)
     return row
 
@@ -228,25 +279,37 @@ async def delete_row(db: AsyncSession, user_name: str, *, row_id: int) -> None:
     if not user_id:
         raise ValueError("User not found")
     await db.execute(
-        delete(models.RowTile).where(models.RowTile.user_id == user_id, models.RowTile.row_id == row_id)
+        delete(models.RowTile).where(
+            models.RowTile.user_id == user_id, models.RowTile.row_id == row_id
+        )
     )
     await db.execute(
-        delete(models.PageRows).where(models.PageRows.user_id == user_id, models.PageRows.row_id == row_id)
+        delete(models.PageRows).where(
+            models.PageRows.user_id == user_id, models.PageRows.row_id == row_id
+        )
     )
     await db.execute(
-        delete(models.Row).where(models.Row.user_id == user_id, models.Row.row_id == row_id)
+        delete(models.Row).where(
+            models.Row.user_id == user_id, models.Row.row_id == row_id
+        )
     )
 
 
-async def save_icon(db: AsyncSession, *, filename: str, content_type: str, data: bytes) -> models.UserIcon:
+async def save_icon(
+    db: AsyncSession, *, filename: str, content_type: str, data: bytes
+) -> models.UserIcon:
     existing = (
-        await db.execute(select(models.UserIcon).where(models.UserIcon.filename == filename))
+        await db.execute(
+            select(models.UserIcon).where(models.UserIcon.filename == filename)
+        )
     ).scalar_one_or_none()
     if existing:
         existing.content_type = content_type
         existing.image = data
         db.add(existing)
         return existing
-    icon = models.UserIcon(filename=filename, content_type=content_type, image=data)
+    icon = models.UserIcon(
+        filename=filename, content_type=content_type, image=data
+    )
     db.add(icon)
     return icon

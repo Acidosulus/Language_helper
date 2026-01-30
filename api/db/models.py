@@ -4,7 +4,10 @@ from sqlalchemy import (
     String,
     ForeignKey,
     TIMESTAMP,
-    BigInteger, LargeBinary, DateTime, func,
+    BigInteger,
+    LargeBinary,
+    DateTime,
+    func,
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
@@ -216,4 +219,6 @@ class UserIcon(Base):
     filename: Mapped[str] = mapped_column(Text, primary_key=True)
     content_type: Mapped[str] = mapped_column(Text, nullable=False)
     image: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

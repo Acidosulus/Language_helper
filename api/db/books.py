@@ -6,7 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db import models, users, dto
 
 
-async def Get_Max_Paragraph_Number_By_Book(db: AsyncSession, user_name: str, id_book: int):
+async def Get_Max_Paragraph_Number_By_Book(
+    db: AsyncSession, user_name: str, id_book: int
+):
     user_id = await users.aget_user_id(db, user_name)
     res = await db.execute(
         select(models.Sentence.id_paragraph)
@@ -20,7 +22,9 @@ async def Get_Max_Paragraph_Number_By_Book(db: AsyncSession, user_name: str, id_
     return row[0] if row else None
 
 
-async def Get_Min_Paragraph_Number_By_Book(db: AsyncSession, user_name: str, id_book: int):
+async def Get_Min_Paragraph_Number_By_Book(
+    db: AsyncSession, user_name: str, id_book: int
+):
     user_id = await users.aget_user_id(db, user_name)
     res = await db.execute(
         select(models.Sentence.id_paragraph)
@@ -119,8 +123,10 @@ async def save_book_position(
 ):
     min_p = await Get_Min_Paragraph_Number_By_Book(db, user_name, id_book)
     max_p = await Get_Max_Paragraph_Number_By_Book(db, user_name, id_book)
-    if min_p is not None and max_p is not None and (
-        min_p <= new_current_paragraph <= max_p
+    if (
+        min_p is not None
+        and max_p is not None
+        and (min_p <= new_current_paragraph <= max_p)
     ):
         await db.execute(
             update(models.Book)
@@ -130,12 +136,12 @@ async def save_book_position(
             )
         )
         user_id = await users.aget_user_id(db, user_name)
-        await save_book_read_event(
-            db, user_id, id_book, new_current_paragraph
-        )
+        await save_book_read_event(db, user_id, id_book, new_current_paragraph)
 
 
-async def get_book(db: AsyncSession, id_book: int, user_name: str) -> dto.BookWithStatsDTO:
+async def get_book(
+    db: AsyncSession, id_book: int, user_name: str
+) -> dto.BookWithStatsDTO:
     books_list = await get_user_books_with_stats(db, user_name)
     return next(filter(lambda x: x.id_book == id_book, books_list), None)
 
@@ -152,7 +158,9 @@ async def last_opened_book(db: AsyncSession, user_name: str):
     return res.scalar_one_or_none()
 
 
-async def save_book_read_event(db: AsyncSession, id_user, id_book, id_paragraph):
+async def save_book_read_event(
+    db: AsyncSession, id_user, id_book, id_paragraph
+):
     db.add(
         models.ReadingJournal(
             user_id=id_user,

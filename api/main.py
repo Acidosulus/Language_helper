@@ -64,12 +64,10 @@ SessionLocal = async_sessionmaker(
 )
 Base = declarative_base()
 
+
 async def get_db() -> AsyncSession:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    async with SessionLocal() as session:
+        yield session
 
 
 async def get_db_autocommit() -> AsyncSession:
@@ -127,14 +125,19 @@ async def dbapi_error_handler(request: Request, exc: DBAPIError):
         },
     )
 
+
 from sqlalchemy import select
 
 
-async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)):
+async def get_current_user(
+    request: Request, db: AsyncSession = Depends(get_db)
+):
     username = request.session.get("user")
     if not username:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
-    result = await db.execute(select(models.User).where(models.User.name == username))
+    result = await db.execute(
+        select(models.User).where(models.User.name == username)
+    )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
@@ -151,7 +154,9 @@ async def set_password(
 ):
     # ищем пользователя, чьё имя указано
     user = (
-        await db.execute(select(models.User).where(models.User.name == target_username))
+        await db.execute(
+            select(models.User).where(models.User.name == target_username)
+        )
     ).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
@@ -177,7 +182,9 @@ async def register(
     db: AsyncSession = Depends(get_db_autocommit),
 ):
     existing = (
-        await db.execute(select(models.User).where(models.User.name == username))
+        await db.execute(
+            select(models.User).where(models.User.name == username)
+        )
     ).scalar_one_or_none()
     if existing:
         raise HTTPException(
@@ -198,7 +205,9 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ):
     user = (
-        await db.execute(select(models.User).where(models.User.name == username))
+        await db.execute(
+            select(models.User).where(models.User.name == username)
+        )
     ).scalar_one_or_none()
     if not user or not pwd_context.verify(password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Неверные данные")
@@ -224,7 +233,9 @@ async def me(request: Request, db: AsyncSession = Depends(get_db)):
     if not username:
         return {"authenticated": False}
     user = (
-        await db.execute(select(models.User).where(models.User.name == username))
+        await db.execute(
+            select(models.User).where(models.User.name == username)
+        )
     ).scalar_one_or_none()
     if not user:
         return {"authenticated": False}
@@ -302,7 +313,9 @@ async def phrase(
 
 
 @app.get("/api/phrase/repeated_today", response_model=dto.RepeatedToday)
-async def get_phrases_repeated_today(request: Request, db: AsyncSession = Depends(get_db)):
+async def get_phrases_repeated_today(
+    request: Request, db: AsyncSession = Depends(get_db)
+):
     if request.session.get("user"):
         count = await phrases.get_phrases_count_repeated_today(
             db, request.session.get("user")
@@ -314,7 +327,9 @@ async def get_phrases_repeated_today(request: Request, db: AsyncSession = Depend
 
 @app.get("/api/syllable", response_model=dto.Syllable)
 async def get_syllable(
-    request: Request, syllable_id: int = None, db: AsyncSession = Depends(get_db)
+    request: Request,
+    syllable_id: int = None,
+    db: AsyncSession = Depends(get_db),
 ):
     return await syllables.get_syllable(
         db, syllable_id, request.session.get("user")
@@ -411,7 +426,9 @@ async def get_book_information(
 
 
 @app.get("/api/book/last", response_model=dto.BookDTO)
-async def get_last_opened_book(request: Request, db: AsyncSession = Depends(get_db)):
+async def get_last_opened_book(
+    request: Request, db: AsyncSession = Depends(get_db)
+):
     if not request.session.get("user"):
         raise HTTPException(status_code=401, detail="User not authenticated")
 
@@ -463,6 +480,7 @@ async def text_to_speech(request: Request, payload: TTSIn):
         raise HTTPException(status_code=400, detail="Text is empty")
 
     try:
+
         def _make_tts():
             tts = gtts.gTTS(text=text, lang=payload.lang or "en")
             buf = BytesIO()
@@ -628,14 +646,16 @@ async def get_user_syllables_in_text_endpoint(
     if not username:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
 
+    if payload.text is None:
+        raise HTTPException(status_code=400, detail="Text is empty")
+
     text = (payload.text or "").strip()
+
     if not text:
         return []
 
-    return await db.run_sync(
-        lambda s: syllables.get_user_syllables_in_text(
-            db=s, text=text, username=username
-        )
+    return await syllables.get_user_syllables_in_text(
+        db=db, text=text, username=username
     )
 
 
@@ -687,11 +707,15 @@ async def start_page(request: Request, db: AsyncSession = Depends(get_db)):
     Возвращает данные для построения структуры стартовой страницы пользователя
     """
 
-    return await pages.get_start_page(db=db, user_name=request.session.get("user"))
+    return await pages.get_start_page(
+        db=db, user_name=request.session.get("user")
+    )
 
 
 @app.get("/api/tile_icon")
-async def tile_icon(request: Request, file_name: str, db: AsyncSession = Depends(get_db)) -> Response:
+async def tile_icon(
+    request: Request, file_name: str, db: AsyncSession = Depends(get_db)
+) -> Response:
     content, content_type, created_at = await pages.get_icon(
         db=db, file_name=file_name
     )
@@ -709,10 +733,13 @@ async def tile_icon(request: Request, file_name: str, db: AsyncSession = Depends
     inm = request.headers.get("if-none-match")
     if inm and inm == etag:
         # Not modified, no body
-        return Response(status_code=304, headers={
-            "ETag": etag,
-            "Cache-Control": "public, max-age=86400",
-        })
+        return Response(
+            status_code=304,
+            headers={
+                "ETag": etag,
+                "Cache-Control": "public, max-age=86400",
+            },
+        )
 
     headers = {
         "ETag": etag,
@@ -723,7 +750,9 @@ async def tile_icon(request: Request, file_name: str, db: AsyncSession = Depends
     if created_at and isinstance(created_at, datetime):
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=timezone.utc)
-        headers["Last-Modified"] = created_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
+        headers["Last-Modified"] = created_at.strftime(
+            "%a, %d %b %Y %H:%M:%S GMT"
+        )
 
     # Fallback conditional with If-Modified-Since
     ims = request.headers.get("if-modified-since")
@@ -731,14 +760,18 @@ async def tile_icon(request: Request, file_name: str, db: AsyncSession = Depends
         try:
             # Compare parsed dates to decide 304
             from email.utils import parsedate_to_datetime
+
             ims_dt = parsedate_to_datetime(ims)
             lm_dt = parsedate_to_datetime(headers["Last-Modified"])
             if lm_dt <= ims_dt:
-                return Response(status_code=304, headers={
-                    "ETag": etag,
-                    "Cache-Control": headers["Cache-Control"],
-                    "Last-Modified": headers["Last-Modified"],
-                })
+                return Response(
+                    status_code=304,
+                    headers={
+                        "ETag": etag,
+                        "Cache-Control": headers["Cache-Control"],
+                        "Last-Modified": headers["Last-Modified"],
+                    },
+                )
         except Exception:
             pass
 
@@ -878,10 +911,16 @@ async def upload_icon(
     file = form.get("file")
     if not file:
         raise HTTPException(status_code=400, detail="file is required")
-    filename = form.get("filename") or getattr(file, "filename", None) or "icon.bin"
-    content_type = getattr(file, "content_type", None) or "application/octet-stream"
+    filename = (
+        form.get("filename") or getattr(file, "filename", None) or "icon.bin"
+    )
+    content_type = (
+        getattr(file, "content_type", None) or "application/octet-stream"
+    )
     data = await file.read()
-    await pages.save_icon(db, filename=filename, content_type=content_type, data=data)
+    await pages.save_icon(
+        db, filename=filename, content_type=content_type, data=data
+    )
     return {"status": "ok", "filename": filename}
 
 
