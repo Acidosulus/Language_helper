@@ -1,84 +1,94 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy.orm import Session, noload
+from sqlalchemy.orm import noload
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
 from db import models
 
 from db import users
 
 
-def get_phrases_by_user(
-    db: Session, username: str, ready: int
+async def get_phrases_by_user(
+    db: AsyncSession, username: str, ready: int
 ) -> list[models.Phrase]:
-    return (
-        db.query(models.Phrase)
+    result = await db.execute(
+        select(models.Phrase)
         .join(models.User)
-        .filter(models.Phrase.ready == ready)
-        .filter(models.User.name == username)
-        .all()
+        .where(models.Phrase.ready == ready)
+        .where(models.User.name == username)
     )
+    return result.scalars().all()
 
 
-def get_phrase_by_id(db: Session, id_phrase: int, username: str):
-    return (
-        db.query(models.Phrase)
+async def get_phrase_by_id(db: AsyncSession, id_phrase: int, username: str):
+    result = await db.execute(
+        select(models.Phrase)
         .join(models.User)
-        .filter(models.Phrase.id_phrase == id_phrase)
-        .filter(models.User.name == username)
-        .first()
+        .where(models.Phrase.id_phrase == id_phrase)
+        .where(models.User.name == username)
     )
+    return result.scalar_one_or_none()
 
 
-def set_phrase_status(db: Session, id_phrase: int, status: int, username: str):
-    phrase = (
-        db.query(models.Phrase)
+async def set_phrase_status(db: AsyncSession, id_phrase: int, status: int, username: str):
+    result = await db.execute(
+        select(models.Phrase)
         .join(models.User)
-        .filter(models.Phrase.id_phrase == id_phrase)
-        .filter(models.User.name == username)
-        .first()
+        .where(models.Phrase.id_phrase == id_phrase)
+        .where(models.User.name == username)
     )
-    phrase.ready = status
+    phrase = result.scalar_one_or_none()
+    if phrase:
+        phrase.ready = status
+        db.add(phrase)
 
 
-def set_phrase_as_viewed(db: Session, id_phrase: int, username: str):
-    phrase = (
-        db.query(models.Phrase)
+async def set_phrase_as_viewed(db: AsyncSession, id_phrase: int, username: str):
+    result = await db.execute(
+        select(models.Phrase)
         .join(models.User)
-        .filter(models.Phrase.id_phrase == id_phrase)
-        .filter(models.User.name == username)
-        .first()
+        .where(models.Phrase.id_phrase == id_phrase)
+        .where(models.User.name == username)
     )
-    phrase.last_view = datetime.utcnow()
-    phrase.show_count += 1
+    phrase = result.scalar_one_or_none()
+    if phrase:
+        phrase.last_view = datetime.utcnow()
+        phrase.show_count += 1
+        db.add(phrase)
+        await db.flush()
 
-    db.flush()
 
-
-def get_next_phrase(db: Session, current_phrase_id: int, username: str):
+async def get_next_phrase(db: AsyncSession, current_phrase_id: int, username: str):
     if current_phrase_id:
-        set_phrase_as_viewed(db, current_phrase_id, username)
+        await set_phrase_as_viewed(db, current_phrase_id, username)
 
-    return (
-        db.query(models.Phrase)
+    result = await db.execute(
+        select(models.Phrase)
         .join(models.User)
-        .filter(models.Phrase.ready == 0)
-        .filter(models.User.name == username)
+        .where(models.Phrase.ready == 0)
+        .where(models.User.name == username)
         .order_by(models.Phrase.last_view)
-        .first()
+        .limit(1)
     )
+    return result.scalar_one_or_none()
 
 
-def save_phrase(db: Session, phrase: models.Phrase, username: str):
+async def save_phrase(db: AsyncSession, phrase: models.Phrase, username: str):
     if phrase.id_phrase:
-        phrase_db = (
-            db.query(models.Phrase)
+        result = await db.execute(
+            select(models.Phrase)
             .join(models.User)
-            .filter(models.Phrase.id_phrase == phrase.id_phrase)
-            .filter(models.User.name == username)
-            .first()
+            .where(models.Phrase.id_phrase == phrase.id_phrase)
+            .where(models.User.name == username)
         )
+        phrase_db = result.scalar_one_or_none()
+        if not phrase_db:
+            return None
         phrase_db.phrase = phrase.phrase
         phrase_db.translation = phrase.translation
+        db.add(phrase_db)
     else:
+        user_id = await users.aget_user_id(db, username)
         phrase_db = models.Phrase(
             phrase=phrase.phrase,
             translation=phrase.translation,
@@ -86,22 +96,22 @@ def save_phrase(db: Session, phrase: models.Phrase, username: str):
             ready=0,
             last_view=datetime.utcnow(),
             dt=datetime.utcnow(),
-            user_id=users.get_user_id(db, username),
+            user_id=user_id,
         )
         db.add(phrase_db)
 
-    db.commit()
+    await db.commit()
     return phrase_db
 
 
-def get_phrases_count_repeated_today(db: Session, username: str) -> int:
-    return (
-        db.query(models.Phrase)
-        .options(noload("*"))
-        .filter(models.Phrase.user_id == users.get_user_id(db, username))
-        .filter(
+async def get_phrases_count_repeated_today(db: AsyncSession, username: str) -> int:
+    user_id = await users.aget_user_id(db, username)
+    result = await db.execute(
+        select(func.count(models.Phrase.id_phrase))
+        .where(models.Phrase.user_id == user_id)
+        .where(
             models.Phrase.last_view
             >= datetime.utcnow().date() - timedelta(days=1)
         )
-        .count()
     )
+    return result.scalar_one()

@@ -1,30 +1,30 @@
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 from db import models, users
 
 
-async def get_start_page(db: Session, user_name: str):
-    ln_user_id = users.get_user_id(db, user_name)
+async def get_start_page(db: AsyncSession, user_name: str):
+    ln_user_id = await users.aget_user_id(db, user_name)
 
     def _to_str(val):
         return "None" if val is None else str(val)
 
-    def _get_tiles_for_row(row_id: int) -> list[dict]:
-        tiles = (
-            db.query(
+    async def _get_tiles_for_row(row_id: int) -> list[dict]:
+        result = await db.execute(
+            select(
                 models.Tile,
                 models.RowTile.id,
                 models.RowTile.row_id,
                 models.RowTile.tile_index,
             )
             .join(models.RowTile, models.RowTile.tile_id == models.Tile.tile_id)
-            .filter(
+            .where(
                 models.RowTile.user_id == ln_user_id,
                 models.RowTile.row_id == row_id,
             )
             .order_by(models.RowTile.tile_index)
-            .all()
         )
+        tiles = result.all()
         out = []
         for tile_obj, rt_id, rt_row_id, rt_index in tiles:
             out.append(
@@ -44,11 +44,12 @@ async def get_start_page(db: Session, user_name: str):
         return out
 
     # Page (по образцу page_id == 1)
-    page = (
-        db.query(models.Page)
-        .filter(models.Page.user_id == ln_user_id, models.Page.page_id == 1)
-        .first()
+    page_res = await db.execute(
+        select(models.Page).where(
+            models.Page.user_id == ln_user_id, models.Page.page_id == 1
+        )
     )
+    page = page_res.scalar_one_or_none()
     if not page:
         return {}
 
@@ -62,17 +63,17 @@ async def get_start_page(db: Session, user_name: str):
     }
 
     # Rows для этой страницы (порядок по PageRows.row_index)
-    rows = (
-        db.query(models.Row, models.PageRows.row_index)
+    rows_res = await db.execute(
+        select(models.Row, models.PageRows.row_index)
         .join(models.PageRows, models.PageRows.row_id == models.Row.row_id)
-        .filter(
+        .where(
             models.Row.user_id == ln_user_id,
             models.PageRows.user_id == ln_user_id,
             models.PageRows.page_id == page.page_id,
         )
         .order_by(models.PageRows.row_index)
-        .all()
     )
+    rows = rows_res.all()
 
     for row_obj, _row_order in rows:
         result["rows"].append(
@@ -84,7 +85,7 @@ async def get_start_page(db: Session, user_name: str):
                 # В образце row_index = "0". Беру из модели Row.row_index.
                 # Если нужно именно позицию в странице — можно подставить _row_order.
                 "row_index": _to_str(row_obj.row_index),
-                "tiles": _get_tiles_for_row(row_obj.row_id),
+                "tiles": await _get_tiles_for_row(row_obj.row_id),
             }
         )
 
@@ -92,10 +93,10 @@ async def get_start_page(db: Session, user_name: str):
 
 
 async def get_icon(
-    db: Session,
+    db: AsyncSession,
     file_name: str,
 ) -> tuple[bytes, str, "datetime | None"]:
-    result = db.execute(
+    result = await db.execute(
         select(models.UserIcon).where(models.UserIcon.filename == file_name)
     )
     icon = result.scalar_one_or_none()
@@ -114,12 +115,11 @@ async def get_icon(
 
 
 # ----- Mutations for tiles -----
-def create_tile(db: Session, user_name: str, *, row_id: int, tile_index: int, name: str, hyperlink: str | None, onclick: str | None, icon: str | None, color: str | None) -> models.Tile:
-    user_id = users.get_user_id(db, user_name)
+async def create_tile(db: AsyncSession, user_name: str, *, row_id: int, tile_index: int, name: str, hyperlink: str | None, onclick: str | None, icon: str | None, color: str | None) -> models.Tile:
+    user_id = await users.aget_user_id(db, user_name)
     if not user_id:
         raise ValueError("User not found")
 
-    # Create tile record
     tile = models.Tile(
         user_id=user_id,
         name=name,
@@ -129,9 +129,8 @@ def create_tile(db: Session, user_name: str, *, row_id: int, tile_index: int, na
         color=color,
     )
     db.add(tile)
-    db.flush()  # get tile_id
+    await db.flush()  # get tile_id
 
-    # Attach to row with specified index
     rt = models.RowTile(
         row_id=row_id,
         tile_id=tile.tile_id,
@@ -142,11 +141,14 @@ def create_tile(db: Session, user_name: str, *, row_id: int, tile_index: int, na
     return tile
 
 
-def update_tile(db: Session, user_name: str, *, tile_id: int, name: str | None = None, hyperlink: str | None = None, onclick: str | None = None, icon: str | None = None, color: str | None = None) -> models.Tile:
-    user_id = users.get_user_id(db, user_name)
+async def update_tile(db: AsyncSession, user_name: str, *, tile_id: int, name: str | None = None, hyperlink: str | None = None, onclick: str | None = None, icon: str | None = None, color: str | None = None) -> models.Tile:
+    user_id = await users.aget_user_id(db, user_name)
     if not user_id:
         raise ValueError("User not found")
-    tile = db.query(models.Tile).filter(models.Tile.tile_id == tile_id, models.Tile.user_id == user_id).first()
+    res = await db.execute(
+        select(models.Tile).where(models.Tile.tile_id == tile_id, models.Tile.user_id == user_id)
+    )
+    tile = res.scalar_one_or_none()
     if not tile:
         raise ValueError("Tile not found")
     if name is not None:
@@ -163,36 +165,39 @@ def update_tile(db: Session, user_name: str, *, tile_id: int, name: str | None =
     return tile
 
 
-def delete_tile(db: Session, user_name: str, *, tile_id: int) -> None:
-    user_id = users.get_user_id(db, user_name)
+async def delete_tile(db: AsyncSession, user_name: str, *, tile_id: int) -> None:
+    user_id = await users.aget_user_id(db, user_name)
     if not user_id:
         raise ValueError("User not found")
-    # Remove row links first
-    db.query(models.RowTile).filter(models.RowTile.user_id == user_id, models.RowTile.tile_id == tile_id).delete()
-    # Remove tile
-    db.query(models.Tile).filter(models.Tile.user_id == user_id, models.Tile.tile_id == tile_id).delete()
+    await db.execute(
+        delete(models.RowTile).where(models.RowTile.user_id == user_id, models.RowTile.tile_id == tile_id)
+    )
+    await db.execute(
+        delete(models.Tile).where(models.Tile.user_id == user_id, models.Tile.tile_id == tile_id)
+    )
 
 
-def set_row_tile_index(db: Session, user_name: str, *, row_id: int, tile_id: int, tile_index: int) -> None:
-    user_id = users.get_user_id(db, user_name)
+async def set_row_tile_index(db: AsyncSession, user_name: str, *, row_id: int, tile_id: int, tile_index: int) -> None:
+    user_id = await users.aget_user_id(db, user_name)
     if not user_id:
         raise ValueError("User not found")
-    # Ensure a tile belongs to only one row for this user: delete other links
-    db.query(models.RowTile).filter(
-        models.RowTile.user_id == user_id,
-        models.RowTile.tile_id == tile_id,
-        models.RowTile.row_id != row_id,
-    ).delete()
 
-    rt = (
-        db.query(models.RowTile)
-        .filter(
+    await db.execute(
+        delete(models.RowTile).where(
+            models.RowTile.user_id == user_id,
+            models.RowTile.tile_id == tile_id,
+            models.RowTile.row_id != row_id,
+        )
+    )
+
+    rt_res = await db.execute(
+        select(models.RowTile).where(
             models.RowTile.user_id == user_id,
             models.RowTile.row_id == row_id,
             models.RowTile.tile_id == tile_id,
         )
-        .first()
     )
+    rt = rt_res.scalar_one_or_none()
     if not rt:
         rt = models.RowTile(
             row_id=row_id,
@@ -206,35 +211,37 @@ def set_row_tile_index(db: Session, user_name: str, *, row_id: int, tile_id: int
         db.add(rt)
 
 
-def create_row(db: Session, user_name: str, *, row_name: str, row_type: int = 0, row_index: int = 0, page_id: int = 1) -> models.Row:
-    user_id = users.get_user_id(db, user_name)
+async def create_row(db: AsyncSession, user_name: str, *, row_name: str, row_type: int = 0, row_index: int = 0, page_id: int = 1) -> models.Row:
+    user_id = await users.aget_user_id(db, user_name)
     if not user_id:
         raise ValueError("User not found")
-    # Create row
     row = models.Row(user_id=user_id, row_name=row_name, row_type=row_type, row_index=row_index)
     db.add(row)
-    db.flush()
-    # Attach to page
+    await db.flush()
     pr = models.PageRows(page_id=page_id, row_id=row.row_id, row_index=row_index, user_id=user_id)
     db.add(pr)
     return row
 
 
-def delete_row(db: Session, user_name: str, *, row_id: int) -> None:
-    user_id = users.get_user_id(db, user_name)
+async def delete_row(db: AsyncSession, user_name: str, *, row_id: int) -> None:
+    user_id = await users.aget_user_id(db, user_name)
     if not user_id:
         raise ValueError("User not found")
-    # Remove all tiles bindings inside this row
-    db.query(models.RowTile).filter(models.RowTile.user_id == user_id, models.RowTile.row_id == row_id).delete()
-    # Remove page-row mapping
-    db.query(models.PageRows).filter(models.PageRows.user_id == user_id, models.PageRows.row_id == row_id).delete()
-    # Remove the row
-    db.query(models.Row).filter(models.Row.user_id == user_id, models.Row.row_id == row_id).delete()
+    await db.execute(
+        delete(models.RowTile).where(models.RowTile.user_id == user_id, models.RowTile.row_id == row_id)
+    )
+    await db.execute(
+        delete(models.PageRows).where(models.PageRows.user_id == user_id, models.PageRows.row_id == row_id)
+    )
+    await db.execute(
+        delete(models.Row).where(models.Row.user_id == user_id, models.Row.row_id == row_id)
+    )
 
 
-def save_icon(db: Session, *, filename: str, content_type: str, data: bytes) -> models.UserIcon:
-    # Upsert by filename
-    existing = db.execute(select(models.UserIcon).where(models.UserIcon.filename == filename)).scalar_one_or_none()
+async def save_icon(db: AsyncSession, *, filename: str, content_type: str, data: bytes) -> models.UserIcon:
+    existing = (
+        await db.execute(select(models.UserIcon).where(models.UserIcon.filename == filename))
+    ).scalar_one_or_none()
     if existing:
         existing.content_type = content_type
         existing.image = data

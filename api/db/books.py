@@ -1,34 +1,41 @@
 from datetime import datetime
 
 from sqlalchemy import desc, select, func, update
-from sqlalchemy.orm import Session, noload
+from sqlalchemy.orm import noload
+from sqlalchemy.ext.asyncio import AsyncSession
 from db import models, users, dto
 
 
-def Get_Max_Paragraph_Number_By_Book(db: Session, user_name: str, id_book: int):
-    return (
-        db.query(models.Sentence)
-        .filter(models.Book.user_id == users.get_user_id(db, user_name))
-        .filter(models.Book.id_book == id_book)
-        .filter(models.Sentence.id_book == models.Book.id_book)
+async def Get_Max_Paragraph_Number_By_Book(db: AsyncSession, user_name: str, id_book: int):
+    user_id = await users.aget_user_id(db, user_name)
+    res = await db.execute(
+        select(models.Sentence.id_paragraph)
+        .join(models.Book, models.Sentence.id_book == models.Book.id_book)
+        .where(models.Book.user_id == user_id)
+        .where(models.Book.id_book == id_book)
         .order_by(desc(models.Sentence.id_paragraph))
-        .first()
-    ).id_paragraph
+        .limit(1)
+    )
+    row = res.first()
+    return row[0] if row else None
 
 
-def Get_Min_Paragraph_Number_By_Book(db: Session, user_name: str, id_book: int):
-    return (
-        db.query(models.Sentence)
-        .filter(models.Book.user_id == users.get_user_id(db, user_name))
-        .filter(models.Book.id_book == id_book)
-        .filter(models.Sentence.id_book == models.Book.id_book)
+async def Get_Min_Paragraph_Number_By_Book(db: AsyncSession, user_name: str, id_book: int):
+    user_id = await users.aget_user_id(db, user_name)
+    res = await db.execute(
+        select(models.Sentence.id_paragraph)
+        .join(models.Book, models.Sentence.id_book == models.Book.id_book)
+        .where(models.Book.user_id == user_id)
+        .where(models.Book.id_book == id_book)
         .order_by(models.Sentence.id_paragraph)
-        .first()
-    ).id_paragraph
+        .limit(1)
+    )
+    row = res.first()
+    return row[0] if row else None
 
 
-def get_user_books_with_stats(
-    db: Session, user_name: str
+async def get_user_books_with_stats(
+    db: AsyncSession, user_name: str
 ) -> list[dto.BookWithStatsDTO]:
     from datetime import datetime, timedelta
 
@@ -73,7 +80,7 @@ def get_user_books_with_stats(
         )
     )
 
-    results = db.execute(stmt).all()
+    results = (await db.execute(stmt)).all()
 
     books_processed = []
     for row in results:
@@ -86,63 +93,66 @@ def get_user_books_with_stats(
     return books_processed
 
 
-def get_paragraph(
-    db: Session,
+async def get_paragraph(
+    db: AsyncSession,
     id_book: int,
     id_paragraph: int,
     user_name: str,
 ):
-    return (
-        db.query(models.Sentence)
-        .filter(models.User.name == user_name)
-        .filter(models.Book.id_book == id_book)
-        .filter(models.Sentence.id_paragraph == id_paragraph)
+    res = await db.execute(
+        select(models.Sentence)
+        .join(models.Book, models.Sentence.id_book == models.Book.id_book)
+        .join(models.User, models.Book.user_id == models.User.user_id)
+        .where(models.User.name == user_name)
+        .where(models.Book.id_book == id_book)
+        .where(models.Sentence.id_paragraph == id_paragraph)
         .order_by(models.Sentence.id_sentence)
-        .all()
     )
+    return res.scalars().all()
 
 
-def save_book_position(
-    db: Session,
+async def save_book_position(
+    db: AsyncSession,
     id_book: int,
     new_current_paragraph: int,
     user_name: str,
 ):
-    if (
-        Get_Min_Paragraph_Number_By_Book(db, user_name, id_book)
-        <= new_current_paragraph
-        <= Get_Max_Paragraph_Number_By_Book(db, user_name, id_book)
+    min_p = await Get_Min_Paragraph_Number_By_Book(db, user_name, id_book)
+    max_p = await Get_Max_Paragraph_Number_By_Book(db, user_name, id_book)
+    if min_p is not None and max_p is not None and (
+        min_p <= new_current_paragraph <= max_p
     ):
-        db.execute(
+        await db.execute(
             update(models.Book)
-            .where(models.User.name == user_name)
             .where(models.Book.id_book == id_book)
-            .where(models.Book.user_id == models.User.user_id)
             .values(
                 current_paragraph=new_current_paragraph, dt=datetime.utcnow()
             )
         )
-        save_book_read_event(
-            db, users.get_user_id(db, user_name), id_book, new_current_paragraph
+        user_id = await users.aget_user_id(db, user_name)
+        await save_book_read_event(
+            db, user_id, id_book, new_current_paragraph
         )
 
 
-def get_book(db: Session, id_book: int, user_name: str) -> dto.BookWithStatsDTO:
-    books = get_user_books_with_stats(db, user_name)
-    return next(filter(lambda x: x.id_book == id_book, books), None)
+async def get_book(db: AsyncSession, id_book: int, user_name: str) -> dto.BookWithStatsDTO:
+    books_list = await get_user_books_with_stats(db, user_name)
+    return next(filter(lambda x: x.id_book == id_book, books_list), None)
 
 
-def last_opened_book(db: Session, user_name: str):
-    return (
-        db.query(models.Book)
+async def last_opened_book(db: AsyncSession, user_name: str):
+    user_id = await users.aget_user_id(db, user_name)
+    res = await db.execute(
+        select(models.Book)
         .options(noload("*"))
-        .filter(models.Book.user_id == users.get_user_id(db, user_name))
+        .where(models.Book.user_id == user_id)
         .order_by(desc(models.Book.dt))
-        .first()
+        .limit(1)
     )
+    return res.scalar_one_or_none()
 
 
-def save_book_read_event(db: Session, id_user, id_book, id_paragraph):
+async def save_book_read_event(db: AsyncSession, id_user, id_book, id_paragraph):
     db.add(
         models.ReadingJournal(
             user_id=id_user,
@@ -151,3 +161,4 @@ def save_book_read_event(db: Session, id_user, id_book, id_paragraph):
             dt=datetime.utcnow(),
         )
     )
+    await db.flush()

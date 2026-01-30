@@ -2,53 +2,56 @@ from datetime import datetime, timedelta
 from typing import Optional
 import re
 
-from sqlalchemy.orm import Session, selectinload, noload
-from sqlalchemy import func
+from sqlalchemy.orm import selectinload, noload
+from sqlalchemy import func, select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 from db import models, dto
 from db import users
 
 
-def get_syllable(db: Session, syllable_id: int, username: str):
-    return (
-        db.query(models.Syllable)
+async def get_syllable(db: AsyncSession, syllable_id: int, username: str):
+    user_id = await users.aget_user_id(db, username)
+    result = await db.execute(
+        select(models.Syllable)
         .join(models.User)
-        .filter(models.Syllable.syllable_id == syllable_id)
-        .filter(models.User.user_id == users.get_user_id(db, username))
+        .where(models.Syllable.syllable_id == syllable_id)
+        .where(models.User.user_id == user_id)
         .options(selectinload(models.Syllable.paragraphs))
-        .first()
+        .limit(1)
     )
+    return result.scalar_one_or_none()
 
 
-def save_syllable(
-    db: Session, syllable: models.Syllable, username: str
+async def save_syllable(
+    db: AsyncSession, syllable: models.Syllable, username: str
 ) -> models.Syllable:
     # existing syllable
     if syllable.syllable_id:
-        user_id = users.get_user_id(db, username)
-        syllable_db = (
-            db.query(models.Syllable)
-            .filter(models.Syllable.syllable_id == syllable.syllable_id)
-            .filter(models.Syllable.user_id == user_id)
-            .first()
+        user_id = await users.aget_user_id(db, username)
+        result = await db.execute(
+            select(models.Syllable)
+            .where(models.Syllable.syllable_id == syllable.syllable_id)
+            .where(models.Syllable.user_id == user_id)
         )
+        syllable_db = result.scalar_one_or_none()
         syllable_db.word = syllable.word
         syllable_db.transcription = syllable.transcription
         syllable_db.translations = syllable.translations
         syllable_db.examples = syllable.examples
 
         # update existing paragraphs
-        for paragraph in syllable_db.paragraphs:
-            paragraph_db = (
-                db.query(models.SyllableParagraph)
-                .filter(
+        for paragraph in list(syllable_db.paragraphs):
+            result = await db.execute(
+                select(models.SyllableParagraph)
+                .where(
                     models.SyllableParagraph.paragraph_id
                     == paragraph.paragraph_id
                 )
-                .filter(
+                .where(
                     models.SyllableParagraph.syllable_id == syllable.syllable_id
                 )
-                .first()
             )
+            paragraph_db = result.scalar_one_or_none()
             if not paragraph_db:
                 continue
             paragraph_db.example = paragraph.example
@@ -56,23 +59,18 @@ def save_syllable(
             paragraph_db.sequence = paragraph.sequence
 
         # delete absent paragraphs
-        for paragraph in syllable_db.paragraphs:
+        for paragraph in list(syllable_db.paragraphs):
             if paragraph.paragraph_id not in [
                 p.paragraph_id for p in syllable.paragraphs
             ]:
-                paragraph_db = (
-                    db.query(models.SyllableParagraph)
-                    .filter(
+                await db.execute(
+                    delete(models.SyllableParagraph).where(
                         models.SyllableParagraph.paragraph_id
-                        == paragraph.paragraph_id
-                    )
-                    .filter(
+                        == paragraph.paragraph_id,
                         models.SyllableParagraph.syllable_id
-                        == syllable.syllable_id
+                        == syllable.syllable_id,
                     )
-                    .first()
                 )
-                db.delete(paragraph_db)
 
         # add new paragraphs
         for paragraph in syllable.paragraphs:
@@ -88,7 +86,7 @@ def save_syllable(
                 db.add(paragraph_db)
     # new syllable
     else:
-        user_id = users.get_user_id(db, username)
+        user_id = await users.aget_user_id(db, username)
         syllable_db = models.Syllable(
             word=syllable.word,
             transcription=syllable.transcription,
@@ -100,7 +98,7 @@ def save_syllable(
             user_id=user_id,
         )
         db.add(syllable_db)
-        db.flush()
+        await db.flush()
 
         for paragraph in syllable.paragraphs:
             paragraph_db = models.SyllableParagraph(
@@ -111,38 +109,39 @@ def save_syllable(
             )
             db.add(paragraph_db)
 
-    db.flush()
+    await db.flush()
     return syllable_db
 
 
-def set_syllable_as_viewed(db: Session, sillable_id: int, username: str):
-    syllable = (
-        db.query(models.Syllable)
+async def set_syllable_as_viewed(db: AsyncSession, sillable_id: int, username: str):
+    result = await db.execute(
+        select(models.Syllable)
         .join(models.User)
-        .filter(models.Syllable.syllable_id == sillable_id)
-        .filter(models.User.name == username)
-        .first()
+        .where(models.Syllable.syllable_id == sillable_id)
+        .where(models.User.name == username)
     )
+    syllable = result.scalar_one_or_none()
     syllable.last_view = datetime.utcnow()
     syllable.show_count += 1
-    db.flush()
+    await db.flush()
 
 
-def get_next_syllable(
-    db: Session, current_syllable_id: int, username: str
+async def get_next_syllable(
+    db: AsyncSession, current_syllable_id: int, username: str
 ) -> Optional[dto.Syllable]:
     if current_syllable_id:
-        set_syllable_as_viewed(db, current_syllable_id, username)
+        await set_syllable_as_viewed(db, current_syllable_id, username)
 
-    syllable = (
-        db.query(models.Syllable)
+    result = await db.execute(
+        select(models.Syllable)
         .join(models.User)
-        .filter(models.Syllable.ready == 0)
-        .filter(models.User.name == username)
+        .where(models.Syllable.ready == 0)
+        .where(models.User.name == username)
         .options(selectinload(models.Syllable.paragraphs))
         .order_by(models.Syllable.last_view)
-        .first()
+        .limit(1)
     )
+    syllable = result.scalar_one_or_none()
 
     if not syllable:
         return None
@@ -151,43 +150,44 @@ def get_next_syllable(
     return dto.Syllable.model_validate(syllable, from_attributes=True)
 
 
-def get_syllables_by_word_part(
-    db: Session,
+async def get_syllables_by_word_part(
+    db: AsyncSession,
     user_name: str,
     ready: int,
     word_part: str = "",
     offset: int = 0,
     limit: int = 100,
 ):
-    query = (
-        db.query(models.Syllable)
+    base = (
+        select(models.Syllable)
         .join(models.User)
-        .filter(models.Syllable.ready == ready)
-        .filter(models.User.name == user_name)
+        .where(models.Syllable.ready == ready)
+        .where(models.User.name == user_name)
     )
 
     if word_part:
-        query = query.filter(models.Syllable.word.contains(word_part))
+        base = base.where(models.Syllable.word.contains(word_part))
 
-    return (
-        query.order_by(models.Syllable.word).offset(offset).limit(limit).all()
+    result = await db.execute(
+        base.order_by(models.Syllable.word).offset(offset).limit(limit)
     )
+    return result.scalars().all()
 
 
-def get_syllables_count_repeated_today(db: Session, username: str) -> int:
-    return (
-        db.query(models.Syllable)
-        .options(noload("*"))
-        .filter(
+async def get_syllables_count_repeated_today(db: AsyncSession, username: str) -> int:
+    user_id = await users.aget_user_id(db, username)
+    result = await db.execute(
+        select(func.count(models.Syllable.syllable_id))
+        .where(
             models.Syllable.last_view
             >= datetime.utcnow().date() - timedelta(days=1)
         )
-        .filter(models.Syllable.user_id == users.get_user_id(db, username))
-        .count()
+        .where(models.Syllable.user_id == user_id)
     )
+    return result.scalar_one()
 
 
-def get_user_syllables_in_text(db: Session, text: str, username: str):
+async def get_user_syllables_in_text(db: AsyncSession, text: str, username: str):
     """
     Возвращает список слов (Syllable) пользователя на изучении (ready == 0),
     которые встречаются в переданном тексте. Реляции paragraphs подгружаются
@@ -204,15 +204,15 @@ def get_user_syllables_in_text(db: Session, text: str, username: str):
     if not tokens:
         return []
 
-    user_id = users.get_user_id(db, username)
+    user_id = await users.aget_user_id(db, username)
 
-    return (
-        db.query(models.Syllable)
+    result = await db.execute(
+        select(models.Syllable)
         .join(models.User)
-        .filter(models.User.user_id == user_id)
-        .filter(models.Syllable.ready == 0)
-        .filter(func.lower(models.Syllable.word).in_(tokens))
+        .where(models.User.user_id == user_id)
+        .where(models.Syllable.ready == 0)
+        .where(func.lower(models.Syllable.word).in_(tokens))
         .options(selectinload(models.Syllable.paragraphs))
         .order_by(models.Syllable.word)
-        .all()
     )
+    return result.scalars().all()

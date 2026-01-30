@@ -7,8 +7,12 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from passlib.context import CryptContext
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session, declarative_base
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.exc import OperationalError, DBAPIError
 
 from db import syllables, books, phrases, models, dto, pages
@@ -17,6 +21,7 @@ from io import BytesIO
 import gtts
 import httpx
 import json
+import anyio
 
 from db.dto import SyllablesInTextIn
 from wooordhunt import parser
@@ -42,27 +47,24 @@ app.add_middleware(
 
 pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
-DATABASE_URL = (
-    "postgresql+psycopg2://postgres:123@192.168.0.60/language"
-)
-engine = create_engine(
+DATABASE_URL = "postgresql+asyncpg://postgres:123@192.168.0.60/language"
+engine = create_async_engine(
     DATABASE_URL,
     echo=False,
-    future=True,
-    # Включаем pre-ping, чтобы автоматически восстанавливать разорванные соединения из пула
     pool_pre_ping=True,
-    # Периодическая переинициализация соединений, чтобы избегать тайм-аутов от сервера БД
     pool_recycle=1800,
+    pool_size=50,
+    max_overflow=100,
 )
-SessionLocal = sessionmaker(
+SessionLocal = async_sessionmaker(
     bind=engine,
     autoflush=True,
     expire_on_commit=False,
+    class_=AsyncSession,
 )
 Base = declarative_base()
 
-
-def get_db():
+async def get_db() -> AsyncSession:
     db = SessionLocal()
     try:
         yield db
@@ -70,15 +72,14 @@ def get_db():
         db.close()
 
 
-def get_db_autocommit():
+async def get_db_autocommit() -> AsyncSession:
     """Сессия с автокоммитом для операций добавления/обновления"""
     db = SessionLocal()
     try:
         yield db
-        db.commit()
+        await db.commit()
     except Exception:
-        # В случае ошибки откатываем транзакцию и пробрасываем дальше
-        db.rollback()
+        await db.rollback()
         raise
     finally:
         db.close()
@@ -126,12 +127,15 @@ async def dbapi_error_handler(request: Request, exc: DBAPIError):
         },
     )
 
+from sqlalchemy import select
 
-def get_current_user(request: Request, db: Session = Depends(get_db)):
+
+async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)):
     username = request.session.get("user")
     if not username:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
-    user = db.query(models.User).filter(models.User.name == username).first()
+    result = await db.execute(select(models.User).where(models.User.name == username))
+    user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
     return user
@@ -139,18 +143,16 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
 
 # --- API ---
 @app.post("/api/set_password")
-def set_password(
+async def set_password(
     target_username: str = Form(...),
     new_password: str = Form(...),
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
     # ищем пользователя, чьё имя указано
     user = (
-        db.query(models.User)
-        .filter(models.User.name == target_username)
-        .first()
-    )
+        await db.execute(select(models.User).where(models.User.name == target_username))
+    ).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
@@ -163,36 +165,41 @@ def set_password(
     # хешируем и обновляем
     user.hashed_password = pwd_context.hash(new_password)
     db.add(user)
-    db.commit()
+    await db.commit()
 
     return {"message": "Пароль успешно обновлён"}
 
 
 @app.post("/api/register")
-def register(
+async def register(
     username: str = Form(...),
     password: str = Form(...),
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
-    if db.query(models.User).filter(models.User.name == username).first():
+    existing = (
+        await db.execute(select(models.User).where(models.User.name == username))
+    ).scalar_one_or_none()
+    if existing:
         raise HTTPException(
             status_code=400, detail="Пользователь уже существует"
         )
     hashed_password = pwd_context.hash(password)
     new_user = models.User(name=username, hashed_password=hashed_password)
     db.add(new_user)
-    db.commit()
+    await db.commit()
     return {"message": "Регистрация успешна"}
 
 
 @app.post("/api/login")
-def login(
+async def login(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
-    user = db.query(models.User).filter(models.User.name == username).first()
+    user = (
+        await db.execute(select(models.User).where(models.User.name == username))
+    ).scalar_one_or_none()
     if not user or not pwd_context.verify(password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Неверные данные")
     request.session["user"] = user.name
@@ -200,23 +207,25 @@ def login(
 
 
 @app.post("/api/logout")
-def logout(request: Request):
+async def logout(request: Request):
     request.session.clear()
     return {"message": "Выход выполнен"}
 
 
 @app.get("/api/secret")
-def secret(user: models.User = Depends(get_current_user)):
+async def secret(user: models.User = Depends(get_current_user)):
     return {"message": f"Секретная страница, {user.name}!"}
 
 
 # --- Доп.эндпоинт для проверки сессии ---
 @app.get("/api/me")
-def me(request: Request, db: Session = Depends(get_db)):
+async def me(request: Request, db: AsyncSession = Depends(get_db)):
     username = request.session.get("user")
     if not username:
         return {"authenticated": False}
-    user = db.query(models.User).filter(models.User.name == username).first()
+    user = (
+        await db.execute(select(models.User).where(models.User.name == username))
+    ).scalar_one_or_none()
     if not user:
         return {"authenticated": False}
     return {
@@ -227,22 +236,22 @@ def me(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/api/phrases", response_model=list[dto.Phrase])
-def phrases_list(
+async def phrases_list(
     request: Request,
     ready: Literal["0", "1"] = "0",
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
-    return phrases.get_phrases_by_user(
+    return await phrases.get_phrases_by_user(
         db, request.session.get("user"), int(ready)
     )
 
 
 @app.get("/api/phrase", response_model=dto.Phrase)
-def get_phrase_by_id(
-    request: Request, id_phrase: int, db: Session = Depends(get_db)
+async def get_phrase_by_id(
+    request: Request, id_phrase: int, db: AsyncSession = Depends(get_db)
 ):
     if request.session.get("user"):
-        return phrases.get_phrase_by_id(
+        return await phrases.get_phrase_by_id(
             db, id_phrase, request.session.get("user")
         )
     else:
@@ -250,14 +259,14 @@ def get_phrase_by_id(
 
 
 @app.post("/api/phrase/status")
-def set_phrase_status(
+async def set_phrase_status(
     request: Request,
     id_phrase: int,
     status: Literal["0", "1"],
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
     if request.session.get("user"):
-        phrases.set_phrase_status(
+        await phrases.set_phrase_status(
             db, id_phrase, int(status), request.session.get("user")
         )
     else:
@@ -265,13 +274,13 @@ def set_phrase_status(
 
 
 @app.get("/api/phrase/next", response_model=dto.Phrase)
-def get_next_phrase(
+async def get_next_phrase(
     request: Request,
     current_phrase_id: int,
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
     if request.session.get("user"):
-        return phrases.get_next_phrase(
+        return await phrases.get_next_phrase(
             db, current_phrase_id, request.session.get("user")
         )
     else:
@@ -279,69 +288,71 @@ def get_next_phrase(
 
 
 @app.post("/api/phrase", response_model=dto.Phrase)
-def phrase(
+async def phrase(
     request: Request,
     phrase: dto.Phrase,
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
     if request.session.get("user"):
-        return phrases.save_phrase(db, phrase, request.session.get("user"))
-    else:
-        raise HTTPException(status_code=401, detail="Требуется авторизация")
-
-
-@app.get("/api/phrase/repeated_today", response_model=dto.RepeatedToday)
-def get_phrases_repeated_today(request: Request, db: Session = Depends(get_db)):
-    if request.session.get("user"):
-        return dto.RepeatedToday(
-            count=phrases.get_phrases_count_repeated_today(
-                db,
-                request.session.get("user"),
-            )
+        return await phrases.save_phrase(
+            db, phrase, request.session.get("user")
         )
     else:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
 
 
+@app.get("/api/phrase/repeated_today", response_model=dto.RepeatedToday)
+async def get_phrases_repeated_today(request: Request, db: AsyncSession = Depends(get_db)):
+    if request.session.get("user"):
+        count = await phrases.get_phrases_count_repeated_today(
+            db, request.session.get("user")
+        )
+        return dto.RepeatedToday(count=count)
+    else:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+
+
 @app.get("/api/syllable", response_model=dto.Syllable)
-def get_syllable(
-    request: Request, syllable_id: int = None, db: Session = Depends(get_db)
+async def get_syllable(
+    request: Request, syllable_id: int = None, db: AsyncSession = Depends(get_db)
 ):
-    return syllables.get_syllable(db, syllable_id, request.session.get("user"))
+    return await syllables.get_syllable(
+        db, syllable_id, request.session.get("user")
+    )
 
 
 @app.post("/api/syllable", response_model=dto.Syllable)
-def save_syllable(
+async def save_syllable(
     request: Request,
     syllable_dto: dto.Syllable,
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
-    return syllables.save_syllable(
+    return await syllables.save_syllable(
         db, syllable_dto, request.session.get("user")
     )
 
 
 @app.get("/api/syllable/next", response_model=Optional[dto.Syllable])
-def get_next_syllable(
+async def get_next_syllable(
     request: Request,
     current_syllable_id: int,
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
     username = request.session.get("user")
     if not username:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    return syllables.get_next_syllable(db, current_syllable_id, username)
+    return await syllables.get_next_syllable(db, current_syllable_id, username)
 
 
 @app.get("/api/syllables/search", response_model=list[dto.Syllable])
-def get_syllables_by_word_part_endpoint(
+async def get_syllables_by_word_part_endpoint(
     request: Request,
     ready: Literal["0", "1"] = "0",
     word_part: str = "",
     offset: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Возвращает список слогов по подстроке слова и признаку готовности.
 
@@ -354,7 +365,7 @@ def get_syllables_by_word_part_endpoint(
     if not username:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
 
-    return syllables.get_syllables_by_word_part(
+    return await syllables.get_syllables_by_word_part(
         db=db,
         user_name=username,
         ready=int(ready),
@@ -365,33 +376,33 @@ def get_syllables_by_word_part_endpoint(
 
 
 @app.get("/api/syllable/repeated_today", response_model=dto.RepeatedToday)
-def get_syllables_repeated_today(
-    request: Request, db: Session = Depends(get_db)
+async def get_syllables_repeated_today(
+    request: Request, db: AsyncSession = Depends(get_db)
 ):
     if request.session.get("user"):
-        return dto.RepeatedToday(
-            count=syllables.get_syllables_count_repeated_today(
-                db,
-                request.session.get("user"),
-            )
+        count = await syllables.get_syllables_count_repeated_today(
+            db, request.session.get("user")
         )
+        return dto.RepeatedToday(count=count)
     else:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
 
 
 @app.get("/api/books", response_model=list[dto.BookWithStatsDTO])
-def get_books(request: Request, db: Session = Depends(get_db)):
-    return books.get_user_books_with_stats(db, request.session.get("user"))
+async def get_books(request: Request, db: AsyncSession = Depends(get_db)):
+    return await books.get_user_books_with_stats(
+        db, request.session.get("user")
+    )
 
 
 @app.get("/api/book", response_model=dto.BookWithStatsDTO)
-def get_book_information(
-    request: Request, book_id: int, db: Session = Depends(get_db)
+async def get_book_information(
+    request: Request, book_id: int, db: AsyncSession = Depends(get_db)
 ):
     if not request.session.get("user"):
         raise HTTPException(status_code=401, detail="User not authenticated")
 
-    book = books.get_book(db, book_id, request.session.get("user"))
+    book = await books.get_book(db, book_id, request.session.get("user"))
 
     if book is None:
         raise HTTPException(status_code=404, detail="Book not found.")
@@ -400,21 +411,21 @@ def get_book_information(
 
 
 @app.get("/api/book/last", response_model=dto.BookDTO)
-def get_last_opened_book(request: Request, db: Session = Depends(get_db)):
+async def get_last_opened_book(request: Request, db: AsyncSession = Depends(get_db)):
     if not request.session.get("user"):
         raise HTTPException(status_code=401, detail="User not authenticated")
 
-    return books.last_opened_book(db, request.session.get("user"))
+    return await books.last_opened_book(db, request.session.get("user"))
 
 
 @app.get("/api/book/paragraph", response_model=list[dto.SentenceDTO])
-def get_book_paragraph(
+async def get_book_paragraph(
     request: Request,
     id_book: int,
     id_paragraph: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
-    return books.get_paragraph(
+    return await books.get_paragraph(
         db,
         id_book=id_book,
         id_paragraph=id_paragraph,
@@ -423,12 +434,12 @@ def get_book_paragraph(
 
 
 @app.post("/api/book/paragraph")
-def save_book_position(
+async def save_book_position(
     request: Request,
     data: dto.BookPositionIn,
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
-    books.save_book_position(
+    await books.save_book_position(
         db,
         id_book=data.id_book,
         new_current_paragraph=data.id_new_paragraph,
@@ -442,7 +453,7 @@ class TTSIn(BaseModel):
 
 
 @app.post("/api/text_to_speech")
-def text_to_speech(request: Request, payload: TTSIn):
+async def text_to_speech(request: Request, payload: TTSIn):
     if not request.session.get("user"):
         raise HTTPException(status_code=401, detail="User not authenticated")
 
@@ -452,10 +463,14 @@ def text_to_speech(request: Request, payload: TTSIn):
         raise HTTPException(status_code=400, detail="Text is empty")
 
     try:
-        tts = gtts.gTTS(text=text, lang=payload.lang or "en")
-        buf = BytesIO()
-        tts.write_to_fp(buf)
-        buf.seek(0)
+        def _make_tts():
+            tts = gtts.gTTS(text=text, lang=payload.lang or "en")
+            buf = BytesIO()
+            tts.write_to_fp(buf)
+            buf.seek(0)
+            return buf
+
+        buf = await anyio.to_thread.run_sync(_make_tts)
         return StreamingResponse(buf, media_type="audio/mpeg")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"TTS error: {e}")
@@ -599,10 +614,10 @@ async def analyze_text_with_llm_local_ollama(payload: LLMAnalyzeIn):
 
 
 @app.post("/api/syllables/in_text", response_model=list[dto.Syllable])
-def get_user_syllables_in_text_endpoint(
+async def get_user_syllables_in_text_endpoint(
     request: Request,
     payload: SyllablesInTextIn,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Возвращает слоги пользователя (ready == 0), встречающиеся в переданном тексте.
@@ -617,18 +632,20 @@ def get_user_syllables_in_text_endpoint(
     if not text:
         return []
 
-    return syllables.get_user_syllables_in_text(
-        db=db, text=text, username=username
+    return await db.run_sync(
+        lambda s: syllables.get_user_syllables_in_text(
+            db=s, text=text, username=username
+        )
     )
 
 
 @app.get("/api/word_from_wooordhunt", response_model=dto.Syllable)
-def word_from_wooordhunt(request: Request, word: str) -> dto.Syllable:
+async def word_from_wooordhunt(request: Request, word: str) -> dto.Syllable:
     lc_link = rf"https://wooordhunt.ru/word/{word}"
-    wh = parser.Wooordhunt(lc_link)
+    wh = await anyio.to_thread.run_sync(parser.Wooordhunt, lc_link)
 
     # Собираем данные не из БД, но приводим их к DTO, совместимому с моделью Syllable
-    examples_list = wh.get_examples() or []
+    examples_list = await anyio.to_thread.run_sync(wh.get_examples) or []
     # Сконвертируем список примеров в строку для поля examples (Pydantic ожидает str)
     examples_text = (
         "\n".join(
@@ -651,8 +668,8 @@ def word_from_wooordhunt(request: Request, word: str) -> dto.Syllable:
     syllable_dto = dto.Syllable(
         syllable_id=None,
         word=word,
-        transcription=wh.get_transcription(),
-        translations=wh.get_translation(),
+        transcription=await anyio.to_thread.run_sync(wh.get_transcription),
+        translations=await anyio.to_thread.run_sync(wh.get_translation),
         examples=examples_text,
         show_count=0,
         ready=0,
@@ -665,7 +682,7 @@ def word_from_wooordhunt(request: Request, word: str) -> dto.Syllable:
 
 
 @app.get("/api/start_page")
-async def start_page(request: Request, db: Session = Depends(get_db)):
+async def start_page(request: Request, db: AsyncSession = Depends(get_db)):
     """
     Возвращает данные для построения структуры стартовой страницы пользователя
     """
@@ -674,7 +691,7 @@ async def start_page(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/api/tile_icon")
-async def tile_icon(request: Request, file_name: str, db: Session = Depends(get_db)) -> Response:
+async def tile_icon(request: Request, file_name: str, db: AsyncSession = Depends(get_db)) -> Response:
     content, content_type, created_at = await pages.get_icon(
         db=db, file_name=file_name
     )
@@ -730,16 +747,16 @@ async def tile_icon(request: Request, file_name: str, db: Session = Depends(get_
 
 # ----- Tiles CRUD -----
 @app.post("/api/tiles", response_model=dto.TileDTO)
-def create_tile_endpoint(
+async def create_tile_endpoint(
     request: Request,
     payload: dto.TileCreateIn,
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
     username = request.session.get("user")
     if not username:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
     try:
-        tile = pages.create_tile(
+        tile = await pages.create_tile(
             db,
             username,
             row_id=payload.row_id,
@@ -756,16 +773,16 @@ def create_tile_endpoint(
 
 
 @app.put("/api/tiles", response_model=dto.TileDTO)
-def update_tile_endpoint(
+async def update_tile_endpoint(
     request: Request,
     payload: dto.TileUpdateIn,
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
     username = request.session.get("user")
     if not username:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
     try:
-        tile = pages.update_tile(
+        tile = await pages.update_tile(
             db,
             username,
             tile_id=payload.tile_id,
@@ -781,16 +798,16 @@ def update_tile_endpoint(
 
 
 @app.delete("/api/tiles/{tile_id}")
-def delete_tile_endpoint(
+async def delete_tile_endpoint(
     request: Request,
     tile_id: int,
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
     username = request.session.get("user")
     if not username:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
     try:
-        pages.delete_tile(db, username, tile_id=tile_id)
+        await pages.delete_tile(db, username, tile_id=tile_id)
         return {"status": "ok"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -805,16 +822,16 @@ class RowCreateIn(BaseModel):
 
 
 @app.post("/api/rows")
-def create_row_endpoint(
+async def create_row_endpoint(
     request: Request,
     payload: RowCreateIn,
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
     username = request.session.get("user")
     if not username:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
     try:
-        row = pages.create_row(
+        row = await pages.create_row(
             db,
             username,
             row_name=payload.row_name,
@@ -833,16 +850,16 @@ def create_row_endpoint(
 
 
 @app.delete("/api/rows/{row_id}")
-def delete_row_endpoint(
+async def delete_row_endpoint(
     request: Request,
     row_id: int,
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
     username = request.session.get("user")
     if not username:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
     try:
-        pages.delete_row(db, username, row_id=row_id)
+        await pages.delete_row(db, username, row_id=row_id)
         return {"status": "ok"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -852,7 +869,7 @@ def delete_row_endpoint(
 @app.post("/api/icons/upload")
 async def upload_icon(
     request: Request,
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
     username = request.session.get("user")
     if not username:
@@ -864,21 +881,21 @@ async def upload_icon(
     filename = form.get("filename") or getattr(file, "filename", None) or "icon.bin"
     content_type = getattr(file, "content_type", None) or "application/octet-stream"
     data = await file.read()
-    pages.save_icon(db, filename=filename, content_type=content_type, data=data)
+    await pages.save_icon(db, filename=filename, content_type=content_type, data=data)
     return {"status": "ok", "filename": filename}
 
 
 @app.post("/api/tiles/order")
-def set_tile_order_endpoint(
+async def set_tile_order_endpoint(
     request: Request,
     payload: dto.RowTileOrderIn,
-    db: Session = Depends(get_db_autocommit),
+    db: AsyncSession = Depends(get_db_autocommit),
 ):
     username = request.session.get("user")
     if not username:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
     try:
-        pages.set_row_tile_index(
+        await pages.set_row_tile_index(
             db,
             username,
             row_id=payload.row_id,
@@ -902,4 +919,5 @@ if __name__ == "__main__":
         ssl_keyfile="localhost+3-key.pem",
         proxy_headers=True,
         forwarded_allow_ips="*",
+        workers=20,
     )
