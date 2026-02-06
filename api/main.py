@@ -963,6 +963,9 @@ async def set_syllable_as_learned(
         syllable_id=payload.syllable_id,
     )
 
+    return {"status": "ok"}
+
+
 @app.post("/api/syllables/unlearned")
 async def set_syllable_as_unlearned(
         request: Request,
@@ -979,6 +982,8 @@ async def set_syllable_as_unlearned(
         username=username,
         syllable_id=payload.syllable_id,
     )
+
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":

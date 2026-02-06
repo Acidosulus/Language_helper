@@ -85,6 +85,38 @@ function SyllablesList() {
     }
   };
 
+  const handleMarkAsLearned = async (syllableId) => {
+    try {
+      await fetch(`${apiUrl}/syllables/learned`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ syllable_id: syllableId }),
+      });
+      fetchSyllables(); // Refresh the list
+    } catch (error) {
+      console.error('Error marking as learned:', error);
+    }
+  };
+
+  const handleMarkAsUnlearned = async (syllableId) => {
+    try {
+      await fetch(`${apiUrl}/syllables/unlearned`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ syllable_id: syllableId }),
+      });
+      fetchSyllables(); // Refresh the list
+    } catch (error) {
+      console.error('Error marking as unlearned:', error);
+    }
+  };
+
   if (loading) {
     return <div className="container mt-4">Loading...</div>;
   }
@@ -125,7 +157,7 @@ function SyllablesList() {
               <th>ID</th>
               <th>Text</th>
               <th>Translation</th>
-              <th>Actions</th>
+              <th style={{ minWidth: '400px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -136,24 +168,41 @@ function SyllablesList() {
                   <td>{syllable.word}</td>
                   <td>{syllable.translations}</td>
                   <td>
-                    <Link
-                      to={`/syllables/${syllable.syllable_id}`}
-                      className="btn btn-sm btn-info me-2"
-                    >
-                      View
-                    </Link>
-                    <Link
-                      to={`/syllables/${syllable.syllable_id}/edit`}
-                      className="btn btn-sm btn-warning me-2"
-                    >
-                      Edit
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(syllable.syllable_id)}
-                      className="btn btn-sm btn-danger"
-                    >
-                      Delete
-                    </button>
+                    <div className="d-flex flex-wrap gap-1">
+                      <Link
+                        to={`/syllables/${syllable.syllable_id}`}
+                        className="btn btn-sm btn-info me-1"
+                      >
+                        View
+                      </Link>
+                      <Link
+                        to={`/syllables/${syllable.syllable_id}/edit`}
+                        className="btn btn-sm btn-warning me-1"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => handleMarkAsLearned(syllable.syllable_id)}
+                        className="btn btn-sm btn-success me-1"
+                        title="Mark as Learned"
+                      >
+                        ✓ Learned
+                      </button>
+                      <button
+                        onClick={() => handleMarkAsUnlearned(syllable.syllable_id)}
+                        className="btn btn-sm btn-outline-secondary me-1"
+                        title="Mark as Unlearned"
+                      >
+                        × Unlearned
+                      </button>
+                      <button
+                        onClick={() => handleDelete(syllable.syllable_id)}
+                        className="btn btn-sm btn-danger"
+                        title="Delete"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
