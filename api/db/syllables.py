@@ -160,6 +160,11 @@ async def get_syllables_by_word_part(
     offset: int = 0,
     limit: int = 100,
 ):
+    """Возвращает список слогов по подстроке слова, только для слов на изучении
+
+    используется для поиска слов среди добавленных на изучение
+    """
+
     base = (
         select(models.Syllable)
         .join(models.User)
@@ -221,3 +226,37 @@ async def get_user_syllables_in_text(
         .order_by(models.Syllable.word)
     )
     return result.scalars().all()
+
+
+async def set_syllable_as_learned(
+    db: AsyncSession, syllable_id: int, username: str
+):
+    """Помечает слово как изученное"""
+
+    result = await db.execute(
+        select(models.Syllable)
+        .join(models.User)
+        .where(models.Syllable.syllable_id == syllable_id)
+        .where(models.User.name == username)
+    )
+    syllable = result.scalar_one_or_none()
+    if syllable:
+        syllable.ready = 1
+        await db.flush()
+
+
+async def set_syllable_as_unlearned(
+    db: AsyncSession, syllable_id: int, username: str
+):
+    """Помечает слово как не изученное"""
+
+    result = await db.execute(
+        select(models.Syllable)
+        .join(models.User)
+        .where(models.Syllable.syllable_id == syllable_id)
+        .where(models.User.name == username)
+    )
+    syllable = result.scalar_one_or_none()
+    if syllable:
+        syllable.ready = 0
+        await db.flush()

@@ -160,3 +160,6 @@ class RowTileOrderIn(BaseModel):
     row_id: int
     tile_id: int
     tile_index: int
+
+class SyllableId(BaseModel):
+    syllable_id: int

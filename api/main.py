@@ -946,6 +946,41 @@ async def set_tile_order_endpoint(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/syllables/learned")
+async def set_syllable_as_learned(
+        request: Request,
+        payload: dto.SyllableId,
+        db: AsyncSession = Depends(get_db_autocommit),
+):
+    """Помечает слово как изученное"""
+    username = request.session.get("user")
+    if not username:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+
+    await syllables.set_syllable_as_learned(
+        db=db,
+        username=username,
+        syllable_id=payload.syllable_id,
+    )
+
+@app.post("/api/syllables/unlearned")
+async def set_syllable_as_unlearned(
+        request: Request,
+        payload: dto.SyllableId,
+        db: AsyncSession = Depends(get_db_autocommit),
+):
+    """Помечает слово как не изученное"""
+    username = request.session.get("user")
+    if not username:
+        raise HTTPException(status_code=401, detail="Требуется авторизация")
+
+    await syllables.set_syllable_as_unlearned(
+        db=db,
+        username=username,
+        syllable_id=payload.syllable_id,
+    )
+
+
 if __name__ == "__main__":
     import uvicorn
 
