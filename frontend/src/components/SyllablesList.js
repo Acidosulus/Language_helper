@@ -170,7 +170,7 @@ function SyllablesList() {
               <th>ID</th>
               <th>Text</th>
               <th>Translation</th>
-              <th style={{ minWidth: '400px' }}>Actions</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -181,7 +181,7 @@ function SyllablesList() {
                   <td>{syllable.word}</td>
                   <td>{syllable.translations}</td>
                   <td>
-                    <div className="d-flex flex-wrap gap-1">
+                    <div className="d-flex flex-column gap-1" style={{minWidth: '100px'}}>
                       <Link
                         to={`/syllables/${syllable.syllable_id}`}
                         className="btn btn-sm btn-info me-1"
