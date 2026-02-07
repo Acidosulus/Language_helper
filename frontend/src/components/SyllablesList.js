@@ -13,6 +13,7 @@ function SyllablesList() {
   const { user } = useAuth();
   const [wordPart, setWordPart] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [readyStatus, setReadyStatus] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -34,7 +35,7 @@ function SyllablesList() {
     try {
       const currentPage = forcedPage || page;
       const offset = (currentPage - 1) * limit;
-      const url = `${apiUrl}/syllables/search?ready=0&word_part=${encodeURIComponent(
+      const url = `${apiUrl}/syllables/search?ready=${readyStatus}&word_part=${encodeURIComponent(
         wordPart
       )}&limit=${limit}&offset=${offset}`;
       setIsSearching(true);
@@ -138,6 +139,18 @@ function SyllablesList() {
           </button>
           <button className="btn btn-secondary" onClick={onClearClick} disabled={isSearching && wordPart === ''}>
             Очистить
+          </button>
+          <button 
+            className={`btn ${readyStatus === 0 ? 'btn-warning' : 'btn-success'}`}
+            onClick={() => {
+              const newStatus = readyStatus === 0 ? 1 : 0;
+              setReadyStatus(newStatus);
+              setPage(1);
+              fetchSyllables(1);
+            }}
+            title={readyStatus === 0 ? 'Learn' : 'Learned'}
+          >
+            {readyStatus === 0 ? 'Learn' : 'Learned'}
           </button>
         </div>
         <div className="d-flex gap-2">
